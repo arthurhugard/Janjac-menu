@@ -1,9 +1,2 @@
-// ============================================================
-// À compléter avec les infos de VOTRE projet Supabase.
-// Project Settings (icône ⚙️) > API > Project URL / anon public key
-// La clé "anon" est publique par conception (protégée par les
-// règles RLS définies dans supabase-schema.sql) : elle peut
-// être visible dans le code sans risque.
-// ============================================================
-export const SUPABASE_URL = "https://VOTRE-PROJET.supabase.co";
-export const SUPABASE_ANON_KEY = "VOTRE-CLE-ANON-PUBLIC";
+export const SUPABASE_URL = "https://dptapivncwuffdevptrq.supabase.co";
+export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwdGFwaXZuY3d1ZmZkZXZwdHJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMjM1MDgsImV4cCI6MjA5ODc5OTUwOH0.e7weFdHRDQEz31L-CkMVBf9bCK69R_Yek4Yl7yLGBVA";
