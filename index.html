@@ -159,7 +159,7 @@ function showToast(msg){
   let t = document.querySelector('.toast');
   if(!t){ t = document.createElement('div'); t.className='toast'; document.body.appendChild(t); }
   t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._timer); t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+  clearTimeout(t._timer); t._timer = setTimeout(()=>t.classList.remove('show'), msg.startsWith('Échec') ? 5000 : 2200);
 }
 
 async function loadAll(){
@@ -174,6 +174,17 @@ async function loadAll(){
 }
 
 function itemsFor(catId){ return state.items.filter(i => i.category_id === catId); }
+
+// Renvoie true si l'opération a réussi. Si une erreur Supabase est présente,
+// l'affiche clairement (au lieu de l'ignorer silencieusement) et renvoie false.
+function checkErr(error, contexte){
+  if(error){
+    console.error(`Erreur Supabase (${contexte}) :`, error);
+    showToast(`Échec — ${contexte} : ${error.message}`);
+    return false;
+  }
+  return true;
+}
 
 function render(){
   if(state.view === 'checking') return renderChecking();
@@ -347,41 +358,49 @@ function bindManagerEvents(){
 
   if(state.editingTab === 'menu'){
     document.querySelectorAll('[data-cat-name-fr]').forEach(inp => inp.onchange = async () => {
-      await supabase.from('categories').update({ name_fr: inp.value }).eq('id', inp.dataset.catNameFr);
+      const { error } = await supabase.from('categories').update({ name_fr: inp.value }).eq('id', inp.dataset.catNameFr);
+      if(!checkErr(error, "modification du nom de catégorie")) return;
       await loadAll(); render();
     });
     document.querySelectorAll('[data-cat-name-en]').forEach(inp => inp.onchange = async () => {
-      await supabase.from('categories').update({ name_en: inp.value }).eq('id', inp.dataset.catNameEn);
+      const { error } = await supabase.from('categories').update({ name_en: inp.value }).eq('id', inp.dataset.catNameEn);
+      if(!checkErr(error, "modification du nom de catégorie (EN)")) return;
       await loadAll(); render();
     });
     document.querySelectorAll('[data-del-cat]').forEach(btn => btn.onclick = async () => {
       if(!confirm('Supprimer cette catégorie et tous ses plats ?')) return;
-      await supabase.from('categories').delete().eq('id', btn.dataset.delCat);
+      const { error } = await supabase.from('categories').delete().eq('id', btn.dataset.delCat);
+      if(!checkErr(error, "suppression de catégorie")) return;
       await loadAll(); render();
     });
     document.querySelectorAll('[data-field]').forEach(field => field.onchange = async () => {
-      await supabase.from('items').update({ [field.dataset.field]: field.value }).eq('id', field.dataset.itemId);
+      const { error } = await supabase.from('items').update({ [field.dataset.field]: field.value }).eq('id', field.dataset.itemId);
+      if(!checkErr(error, "modification du plat")) return;
       await loadAll(); render();
     });
     document.querySelectorAll('[data-toggle]').forEach(tog => tog.onclick = async () => {
       const item = state.items.find(i => i.id === tog.dataset.toggle);
-      await supabase.from('items').update({ out_of_stock: !item.out_of_stock }).eq('id', item.id);
+      const { error } = await supabase.from('items').update({ out_of_stock: !item.out_of_stock }).eq('id', item.id);
+      if(!checkErr(error, "changement de disponibilité")) return;
       await loadAll(); render();
       showToast(!item.out_of_stock ? `${item.name_fr} marqué en rupture` : `${item.name_fr} de nouveau disponible`);
     });
     document.querySelectorAll('[data-del-item]').forEach(btn => btn.onclick = async () => {
-      await supabase.from('items').delete().eq('id', btn.dataset.delItem);
+      const { error } = await supabase.from('items').delete().eq('id', btn.dataset.delItem);
+      if(!checkErr(error, "suppression du plat")) return;
       await loadAll(); render();
     });
     document.querySelectorAll('[data-add-item]').forEach(btn => btn.onclick = async () => {
-      await supabase.from('items').insert({ category_id: btn.dataset.addItem, name_fr: '', price: '' });
+      const { error } = await supabase.from('items').insert({ category_id: btn.dataset.addItem, name_fr: '', price: '' });
+      if(!checkErr(error, "ajout d'un plat")) return;
       await loadAll(); render();
     });
     const addCatBtn = document.getElementById('add-cat-btn');
     if(addCatBtn) addCatBtn.onclick = async () => {
       const inp = document.getElementById('new-cat-input');
       if(!inp.value.trim()) return;
-      await supabase.from('categories').insert({ name_fr: inp.value.trim() });
+      const { error } = await supabase.from('categories').insert({ name_fr: inp.value.trim() });
+      if(!checkErr(error, "ajout d'une catégorie")) return;
       await loadAll(); render();
     };
   }
