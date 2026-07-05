@@ -71,6 +71,10 @@
     transform:rotate(-6deg); background:rgba(193,84,58,0.08);
   }
   .empty-note{ text-align:center; color:var(--chalk-dim); font-size:0.85rem; font-style:italic; padding:20px 0; }
+  .formula-section{ margin-bottom:24px; }
+  .formula-note{ font-size:0.78rem; color:var(--gold); font-style:italic; margin-top:10px; line-height:1.4; opacity:0.9; }
+  .mgr-note-block{ margin-bottom:16px; }
+  .mgr-note-block textarea{ min-height:44px; }
   .footer-link{ text-align:center; margin-top:26px; font-size:0.72rem; }
   .footer-link a{ color:var(--chalk-dim); text-decoration:none; border-bottom:1px dotted var(--chalk-dim); opacity:0.7; cursor:pointer; }
   .footer-link a:hover{ opacity:1; }
@@ -150,6 +154,7 @@ let state = {
   settings: null,
   categories: [],
   items: [],
+  formulas: [],
   editingTab: 'menu',
   loginError: '',
 };
@@ -163,14 +168,16 @@ function showToast(msg){
 }
 
 async function loadAll(){
-  const [{ data: settings }, { data: categories }, { data: items }] = await Promise.all([
+  const [{ data: settings }, { data: categories }, { data: items }, { data: formulas }] = await Promise.all([
     supabase.from('restaurant_settings').select('*').eq('id', 1).maybeSingle(),
     supabase.from('categories').select('*').order('created_at', { ascending: true }),
     supabase.from('items').select('*').order('created_at', { ascending: true }),
+    supabase.from('formulas').select('*').order('created_at', { ascending: true }),
   ]);
-  state.settings = settings || { name_fr: 'Votre Restaurant', name_en: 'Your Restaurant' };
+  state.settings = settings || { name_fr: 'Votre Restaurant', name_en: 'Your Restaurant', formulas_note_fr: '', formulas_note_en: '' };
   state.categories = categories || [];
   state.items = items || [];
+  state.formulas = formulas || [];
 }
 
 function itemsFor(catId){ return state.items.filter(i => i.category_id === catId); }
@@ -209,6 +216,24 @@ function renderMenu(){
     <div class="restaurant-name">${esc(name)}</div>
     <div class="subtitle">${L==='en' ? "Today's menu" : "La carte du jour"}</div>
     <div class="divider"></div>`;
+
+  if(state.formulas.length > 0){
+    const note = L==='en' && state.settings.formulas_note_en ? state.settings.formulas_note_en : state.settings.formulas_note_fr;
+    html += `<div class="formula-section">
+      <div class="category-name">${L==='en' ? 'Set Menus' : 'Nos Formules'}</div>`;
+    state.formulas.forEach(f => {
+      const fName = L === 'en' && f.name_en ? f.name_en : f.name_fr;
+      html += `<div class="item">
+        <div class="item-row">
+          <span class="item-name">${esc(fName)}</span>
+          <span class="item-leader"></span>
+          <span class="item-price">${esc(f.price)}</span>
+        </div>
+      </div>`;
+    });
+    if(note){ html += `<div class="formula-note">${esc(note)}</div>`; }
+    html += `</div><div class="divider"></div>`;
+  }
 
   const catsWithItems = state.categories.filter(c => itemsFor(c.id).length > 0);
   if(catsWithItems.length === 0){
@@ -285,6 +310,7 @@ function renderManager(){
     </div>
     <div class="tabs">
       <div class="tab ${state.editingTab==='menu'?'active':''}" data-tab="menu">Carte</div>
+      <div class="tab ${state.editingTab==='formules'?'active':''}" data-tab="formules">Formules</div>
       <div class="tab ${state.editingTab==='qr'?'active':''}" data-tab="qr">QR code</div>
       <div class="tab ${state.editingTab==='reglages'?'active':''}" data-tab="reglages">Réglages</div>
     </div>`;
@@ -329,6 +355,34 @@ function renderManager(){
       <input type="text" id="new-cat-input" placeholder="Nouvelle catégorie (ex. Fromages)">
       <button class="btn btn-gold" id="add-cat-btn">Ajouter</button>
     </div>`;
+  }
+
+  if(state.editingTab === 'formules'){
+    html += `<div class="mgr-note-block">
+      <span class="lang-tag">Note affichée aux clients (FR)</span>
+      <textarea id="note-fr" placeholder="ex. Les desserts doivent être commandés en début de repas pour être inclus dans la formule.">${esc(state.settings.formulas_note_fr||'')}</textarea>
+      <span class="lang-tag">EN — à compléter</span>
+      <textarea id="note-en" placeholder="Note in English (optional)">${esc(state.settings.formulas_note_en||'')}</textarea>
+      <button class="btn btn-gold btn-small" id="save-note-btn" style="margin-top:6px;">Enregistrer la note</button>
+    </div>
+    <div class="divider"></div>`;
+
+    state.formulas.forEach(f => {
+      html += `<div class="mgr-item" data-formula="${f.id}">
+        <span class="lang-tag">FR</span>
+        <div class="mgr-item-top">
+          <input type="text" class="field-name" placeholder="Nom de la formule (ex. Entrée + Plat)" value="${esc(f.name_fr)}" data-ffield="name_fr" data-formula-id="${f.id}">
+          <input type="text" class="field-price" placeholder="Prix" value="${esc(f.price)}" data-ffield="price" data-formula-id="${f.id}">
+        </div>
+        <span class="lang-tag">EN — à compléter</span>
+        <input type="text" class="field-name" placeholder="Set menu name (English)" value="${esc(f.name_en||'')}" data-ffield="name_en" data-formula-id="${f.id}">
+        <div class="toggle-row">
+          <span></span>
+          <button class="btn btn-rust btn-small" data-del-formula="${f.id}">Retirer</button>
+        </div>
+      </div>`;
+    });
+    html += `<button class="add-item-btn" id="add-formula-btn">+ Ajouter une formule</button>`;
   }
 
   if(state.editingTab === 'qr'){
@@ -405,6 +459,33 @@ function bindManagerEvents(){
     };
   }
 
+  if(state.editingTab === 'formules'){
+    document.getElementById('save-note-btn').onclick = async () => {
+      const formulas_note_fr = document.getElementById('note-fr').value;
+      const formulas_note_en = document.getElementById('note-en').value;
+      const { error } = await supabase.from('restaurant_settings').update({ formulas_note_fr, formulas_note_en }).eq('id', 1);
+      if(!checkErr(error, "enregistrement de la note")) return;
+      await loadAll(); render();
+      showToast('Note enregistrée.');
+    };
+    document.querySelectorAll('[data-ffield]').forEach(field => field.onchange = async () => {
+      const { error } = await supabase.from('formulas').update({ [field.dataset.ffield]: field.value }).eq('id', field.dataset.formulaId);
+      if(!checkErr(error, "modification de la formule")) return;
+      await loadAll(); render();
+    });
+    document.querySelectorAll('[data-del-formula]').forEach(btn => btn.onclick = async () => {
+      const { error } = await supabase.from('formulas').delete().eq('id', btn.dataset.delFormula);
+      if(!checkErr(error, "suppression de la formule")) return;
+      await loadAll(); render();
+    });
+    const addFormulaBtn = document.getElementById('add-formula-btn');
+    if(addFormulaBtn) addFormulaBtn.onclick = async () => {
+      const { error } = await supabase.from('formulas').insert({ name_fr: '', price: '' });
+      if(!checkErr(error, "ajout d'une formule")) return;
+      await loadAll(); render();
+    };
+  }
+
   if(state.editingTab === 'qr'){
     const link = location.origin + location.pathname;
     new QRCode(document.getElementById('qr-canvas'), { text: link, width: 180, height: 180, colorDark:'#182922', colorLight:'#ffffff' });
@@ -428,6 +509,7 @@ function subscribeRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, async () => { await loadAll(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, async () => { await loadAll(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_settings' }, async () => { await loadAll(); render(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'formulas' }, async () => { await loadAll(); render(); })
     .subscribe();
 }
 
