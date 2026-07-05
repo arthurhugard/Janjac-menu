@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La carte</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#182922; --bg2:#132019;
+    --chalk:#f2efe3; --chalk-dim:#b7c2b6;
+    --gold:#e3b23c; --rust:#c1543a;
+    --wipe:rgba(242,239,227,0.55); --line:rgba(242,239,227,0.16);
+    --frame:#5b4130; --frame-dark:#3a2a1e; --radius:8px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Work Sans', sans-serif;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.03), transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(255,255,255,0.025), transparent 55%),
+      var(--bg);
+    color:var(--chalk);
+    min-height:100vh;
+    padding:18px 14px 60px;
+  }
+  .frame{
+    max-width:640px; margin:0 auto;
+    border:3px solid var(--frame); border-radius:var(--radius);
+    box-shadow:0 0 0 6px var(--frame-dark), 0 20px 50px rgba(0,0,0,0.45);
+    background:var(--bg2); padding:28px 22px 22px; position:relative;
+  }
+  .lang-toggle{
+    position:absolute; top:16px; right:16px;
+    display:flex; border:1px solid var(--line); border-radius:20px; overflow:hidden;
+  }
+  .lang-toggle button{
+    background:transparent; border:none; color:var(--chalk-dim);
+    font-size:0.75rem; font-weight:600; padding:5px 12px; cursor:pointer;
+  }
+  .lang-toggle button.active{ background:var(--gold); color:#20180a; }
+
+  .restaurant-name{ font-family:'Caveat', cursive; font-weight:700; font-size:2.6rem; text-align:center; margin:0 0 2px; text-shadow:0 0 14px rgba(242,239,227,0.15); }
+  .subtitle{ text-align:center; color:var(--chalk-dim); font-size:0.78rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:18px; }
+  .divider{ height:1px; background:var(--line); margin:14px 0 18px; position:relative; }
+  .divider::after{ content:'❧'; position:absolute; left:50%; top:50%; transform:translate(-50%,-52%); background:var(--bg2); padding:0 10px; color:var(--gold); font-size:0.9rem; }
+
+  .category{ margin-bottom:22px; }
+  .category-name{ font-family:'Caveat', cursive; font-weight:700; font-size:1.7rem; color:var(--gold); margin:0 0 10px; }
+
+  .item{ position:relative; padding:9px 0; }
+  .item-row{ display:flex; align-items:baseline; gap:8px; }
+  .item-name{ font-family:'Fraunces', serif; font-size:1.05rem; font-weight:500; white-space:nowrap; }
+  .item-leader{ flex:1; border-bottom:1px dotted var(--chalk-dim); margin-bottom:4px; opacity:0.5; }
+  .item-price{ font-family:'Fraunces', serif; color:var(--gold); font-weight:600; font-size:1rem; white-space:nowrap; }
+  .item-desc{ font-size:0.83rem; color:var(--chalk-dim); margin-top:2px; line-height:1.35; max-width:92%; }
+
+  .item.out-of-stock .item-name, .item.out-of-stock .item-desc, .item.out-of-stock .item-price{
+    opacity:0.38; text-decoration:line-through; text-decoration-color:var(--wipe); text-decoration-thickness:3px;
+  }
+  .item.out-of-stock::before{
+    content:''; position:absolute; left:-4%; top:38%; width:108%; height:20px;
+    background:linear-gradient(100deg, transparent, var(--wipe) 35%, var(--wipe) 65%, transparent);
+    filter:blur(5px); transform:rotate(-2deg); pointer-events:none; mix-blend-mode:overlay;
+  }
+  .sold-out-tag{
+    position:absolute; right:2px; top:-6px; font-family:'Caveat', cursive; font-weight:700; font-size:0.95rem;
+    color:var(--rust); border:1.5px solid var(--rust); border-radius:5px; padding:0 7px;
+    transform:rotate(-6deg); background:rgba(193,84,58,0.08);
+  }
+  .empty-note{ text-align:center; color:var(--chalk-dim); font-size:0.85rem; font-style:italic; padding:20px 0; }
+  .footer-link{ text-align:center; margin-top:26px; font-size:0.72rem; }
+  .footer-link a{ color:var(--chalk-dim); text-decoration:none; border-bottom:1px dotted var(--chalk-dim); opacity:0.7; cursor:pointer; }
+  .footer-link a:hover{ opacity:1; }
+
+  .mgr-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .mgr-title{ font-family:'Caveat', cursive; font-size:1.9rem; }
+  .btn{ font-family:'Work Sans', sans-serif; font-size:0.82rem; font-weight:500; padding:8px 14px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; transition:background .15s; }
+  .btn:hover{ background:rgba(242,239,227,0.06); }
+  .btn-gold{ background:var(--gold); color:#20180a; border:none; font-weight:600; }
+  .btn-gold:hover{ filter:brightness(1.08); }
+  .btn-rust{ background:transparent; color:var(--rust); border:1px solid var(--rust); }
+  .btn-small{ padding:5px 10px; font-size:0.75rem; }
+
+  .tabs{ display:flex; gap:6px; margin:14px 0 18px; }
+  .tab{ flex:1; text-align:center; padding:8px 4px; border-radius:6px; font-size:0.82rem; font-weight:500; cursor:pointer; border:1px solid var(--line); color:var(--chalk-dim); }
+  .tab.active{ background:var(--gold); color:#20180a; border-color:var(--gold); font-weight:600; }
+
+  .mgr-cat{ border:1px solid var(--line); border-radius:6px; padding:12px 12px 14px; margin-bottom:14px; }
+  .mgr-cat-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; }
+  .mgr-cat-names{ display:flex; flex-direction:column; gap:2px; width:65%; }
+  .mgr-cat-head input{ font-family:'Caveat', cursive; font-size:1.25rem; background:transparent; border:none; border-bottom:1px dashed var(--line); color:var(--gold); padding:2px 0; width:100%; }
+  .mgr-cat-head input.en{ color:var(--chalk-dim); font-size:1.05rem; }
+  .lang-tag{ font-size:0.62rem; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
+
+  .mgr-item{ display:flex; flex-direction:column; gap:6px; padding:10px 0; border-top:1px solid var(--line); }
+  .mgr-item-top{ display:flex; gap:8px; align-items:center; }
+  .mgr-item input[type=text], .mgr-item textarea{
+    background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk); border-radius:5px;
+    padding:6px 8px; font-family:'Work Sans', sans-serif; font-size:0.85rem; width:100%;
+  }
+  .mgr-item textarea{ resize:vertical; min-height:36px; }
+  .field-name{ flex:2; } .field-price{ flex:0 0 78px; }
+  .field-block{ display:flex; flex-direction:column; gap:1px; width:100%; }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; margin-top:2px; }
+  .toggle{ display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:0.82rem; }
+  .switch{ width:42px; height:24px; border-radius:14px; background:rgba(242,239,227,0.15); position:relative; transition:background .15s; flex-shrink:0; }
+  .switch::after{ content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:var(--chalk); transition:transform .15s; }
+  .switch.off{ background:rgba(193,84,58,0.35); }
+  .switch.off::after{ transform:translateX(18px); background:var(--rust); }
+  .item-actions{ display:flex; gap:6px; }
+  .add-item-btn{ margin-top:8px; background:transparent; border:1px dashed var(--line); color:var(--chalk-dim); border-radius:5px; padding:7px; width:100%; cursor:pointer; font-size:0.8rem; }
+  .add-item-btn:hover{ color:var(--chalk); border-color:var(--chalk-dim); }
+  .new-cat-row{ display:flex; gap:8px; margin-top:4px; }
+  .new-cat-row input{ flex:1; background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk); border-radius:5px; padding:8px 10px; font-size:0.85rem; }
+
+  .login-screen{ text-align:center; padding:30px 10px; }
+  .login-screen p{ color:var(--chalk-dim); font-size:0.85rem; margin-bottom:14px; }
+  .login-field{ width:100%; max-width:280px; margin:0 auto 10px; display:block; text-align:left; padding:10px 12px; border-radius:6px; border:1px solid var(--line); background:rgba(242,239,227,0.05); color:var(--chalk); font-size:0.9rem; }
+  .login-error{ color:var(--rust); font-size:0.8rem; min-height:18px; }
+
+  .link-row{ display:flex; gap:6px; margin-top:12px; align-items:center; background:rgba(242,239,227,0.05); border-radius:6px; padding:8px 10px; }
+  .link-row input{ flex:1; background:transparent; border:none; color:var(--chalk-dim); font-size:0.78rem; }
+
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--gold); color:#20180a; padding:9px 18px; border-radius:20px; font-size:0.82rem; font-weight:600; opacity:0; pointer-events:none; transition:opacity .25s; z-index:50; }
+  .toast.show{ opacity:1; }
+
+  .settings-row{ margin-bottom:14px; }
+  .settings-row label{ font-size:0.75rem; color:var(--chalk-dim); display:block; margin-bottom:4px; }
+  .settings-row input{ width:100%; background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk); border-radius:5px; padding:8px 10px; font-size:0.9rem; }
+  .qr-box{ text-align:center; padding:10px 0 4px; }
+  .qr-box canvas, .qr-box img{ background:#fff; padding:12px; border-radius:8px; }
+</style>
+</head>
+<body>
+<div id="app"><div class="frame"><div class="empty-note">Chargement de la carte…</div></div></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const app = document.getElementById('app');
+
+let state = {
+  view: location.hash === '#gestion' ? 'checking' : 'menu',
+  lang: 'fr',
+  settings: null,
+  categories: [],
+  items: [],
+  editingTab: 'menu',
+  loginError: '',
+};
+
+function esc(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showToast(msg){
+  let t = document.querySelector('.toast');
+  if(!t){ t = document.createElement('div'); t.className='toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+async function loadAll(){
+  const [{ data: settings }, { data: categories }, { data: items }] = await Promise.all([
+    supabase.from('restaurant_settings').select('*').eq('id', 1).maybeSingle(),
+    supabase.from('categories').select('*').order('created_at', { ascending: true }),
+    supabase.from('items').select('*').order('created_at', { ascending: true }),
+  ]);
+  state.settings = settings || { name_fr: 'Votre Restaurant', name_en: 'Your Restaurant' };
+  state.categories = categories || [];
+  state.items = items || [];
+}
+
+function itemsFor(catId){ return state.items.filter(i => i.category_id === catId); }
+
+function render(){
+  if(state.view === 'checking') return renderChecking();
+  if(state.view === 'menu') return renderMenu();
+  if(state.view === 'login') return renderLogin();
+  if(state.view === 'manager') return renderManager();
+}
+
+function renderChecking(){
+  app.innerHTML = `<div class="frame"><div class="empty-note">Vérification…</div></div>`;
+}
+
+// ---------- CUSTOMER MENU ----------
+function renderMenu(){
+  const L = state.lang;
+  const name = L === 'en' && state.settings.name_en ? state.settings.name_en : state.settings.name_fr;
+  let html = `<div class="frame">
+    <div class="lang-toggle">
+      <button data-lang="fr" class="${L==='fr'?'active':''}">FR</button>
+      <button data-lang="en" class="${L==='en'?'active':''}">EN</button>
+    </div>
+    <div class="restaurant-name">${esc(name)}</div>
+    <div class="subtitle">${L==='en' ? "Today's menu" : "La carte du jour"}</div>
+    <div class="divider"></div>`;
+
+  const catsWithItems = state.categories.filter(c => itemsFor(c.id).length > 0);
+  if(catsWithItems.length === 0){
+    html += `<div class="empty-note">${L==='en' ? 'The menu will appear here once the manager has filled it in.' : "La carte sera affichée ici dès que le gérant l'aura complétée."}</div>`;
+  } else {
+    catsWithItems.forEach(cat => {
+      const catName = L === 'en' && cat.name_en ? cat.name_en : cat.name_fr;
+      html += `<div class="category"><div class="category-name">${esc(catName)}</div>`;
+      itemsFor(cat.id).forEach(it => {
+        const iName = L === 'en' && it.name_en ? it.name_en : it.name_fr;
+        const iDesc = L === 'en' && it.desc_en ? it.desc_en : it.desc_fr;
+        html += `<div class="item ${it.out_of_stock ? 'out-of-stock' : ''}">
+          ${it.out_of_stock ? `<div class="sold-out-tag">${L==='en' ? 'sold out' : 'épuisé'}</div>` : ''}
+          <div class="item-row">
+            <span class="item-name">${esc(iName)}</span>
+            <span class="item-leader"></span>
+            <span class="item-price">${esc(it.price)}</span>
+          </div>
+          ${iDesc ? `<div class="item-desc">${esc(iDesc)}</div>` : ''}
+        </div>`;
+      });
+      html += `</div>`;
+    });
+  }
+
+  html += `<div class="footer-link"><a id="mgr-link">${L==='en' ? 'Manager area' : 'Espace gérant'}</a></div></div>`;
+  app.innerHTML = html;
+  document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { state.lang = b.dataset.lang; render(); });
+  document.getElementById('mgr-link').onclick = async () => {
+    location.hash = 'gestion';
+    const { data: { session } } = await supabase.auth.getSession();
+    state.view = session ? 'manager' : 'login';
+    render();
+  };
+}
+
+// ---------- LOGIN ----------
+function renderLogin(){
+  app.innerHTML = `<div class="frame">
+    <div class="mgr-header">
+      <div class="mgr-title">Espace gérant</div>
+      <button class="btn btn-small" id="back-btn">← Retour à la carte</button>
+    </div>
+    <div class="login-screen">
+      <p>Connectez-vous pour gérer la carte.</p>
+      <input class="login-field" id="email-field" type="email" placeholder="Email">
+      <input class="login-field" id="pass-field" type="password" placeholder="Mot de passe">
+      <div class="login-error" id="login-err">${esc(state.loginError)}</div>
+      <button class="btn btn-gold" id="login-submit">Se connecter</button>
+    </div>
+  </div>`;
+  document.getElementById('back-btn').onclick = () => { location.hash=''; state.view='menu'; render(); };
+  const submit = async () => {
+    const email = document.getElementById('email-field').value.trim();
+    const pass = document.getElementById('pass-field').value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if(error){ state.loginError = 'Identifiants incorrects.'; render(); return; }
+    state.view = 'manager';
+    render();
+  };
+  document.getElementById('login-submit').onclick = submit;
+  document.getElementById('pass-field').addEventListener('keydown', e => { if(e.key==='Enter') submit(); });
+}
+
+// ---------- MANAGER ----------
+function renderManager(){
+  let html = `<div class="frame">
+    <div class="mgr-header">
+      <div class="mgr-title">Gestion de la carte</div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-small" id="exit-btn">Voir la carte</button>
+        <button class="btn btn-small btn-rust" id="logout-btn">Déconnexion</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab ${state.editingTab==='menu'?'active':''}" data-tab="menu">Carte</div>
+      <div class="tab ${state.editingTab==='qr'?'active':''}" data-tab="qr">QR code</div>
+      <div class="tab ${state.editingTab==='reglages'?'active':''}" data-tab="reglages">Réglages</div>
+    </div>`;
+
+  if(state.editingTab === 'menu'){
+    state.categories.forEach(cat => {
+      html += `<div class="mgr-cat" data-cat="${cat.id}">
+        <div class="mgr-cat-head">
+          <div class="mgr-cat-names">
+            <span class="lang-tag">FR</span>
+            <input type="text" value="${esc(cat.name_fr)}" data-cat-name-fr="${cat.id}">
+            <span class="lang-tag">EN</span>
+            <input type="text" class="en" placeholder="À compléter…" value="${esc(cat.name_en||'')}" data-cat-name-en="${cat.id}">
+          </div>
+          <button class="btn btn-rust btn-small" data-del-cat="${cat.id}">Supprimer</button>
+        </div>`;
+      itemsFor(cat.id).forEach(it => {
+        html += `<div class="mgr-item" data-item="${it.id}">
+          <span class="lang-tag">FR</span>
+          <div class="mgr-item-top">
+            <input type="text" class="field-name" placeholder="Nom du plat" value="${esc(it.name_fr)}" data-field="name_fr" data-item-id="${it.id}">
+            <input type="text" class="field-price" placeholder="Prix" value="${esc(it.price)}" data-field="price" data-item-id="${it.id}">
+          </div>
+          <textarea placeholder="Description (optionnel)" data-field="desc_fr" data-item-id="${it.id}">${esc(it.desc_fr)}</textarea>
+          <span class="lang-tag">EN — à compléter</span>
+          <input type="text" class="field-name" placeholder="Dish name (English)" value="${esc(it.name_en||'')}" data-field="name_en" data-item-id="${it.id}">
+          <textarea placeholder="Description (English)" data-field="desc_en" data-item-id="${it.id}">${esc(it.desc_en||'')}</textarea>
+          <div class="toggle-row">
+            <div class="toggle" data-toggle="${it.id}">
+              <div class="switch ${it.out_of_stock ? 'off' : ''}"></div>
+              <span>${it.out_of_stock ? 'Rupture de stock' : 'Disponible'}</span>
+            </div>
+            <div class="item-actions">
+              <button class="btn btn-rust btn-small" data-del-item="${it.id}">Retirer</button>
+            </div>
+          </div>
+        </div>`;
+      });
+      html += `<button class="add-item-btn" data-add-item="${cat.id}">+ Ajouter un plat</button></div>`;
+    });
+    html += `<div class="new-cat-row">
+      <input type="text" id="new-cat-input" placeholder="Nouvelle catégorie (ex. Fromages)">
+      <button class="btn btn-gold" id="add-cat-btn">Ajouter</button>
+    </div>`;
+  }
+
+  if(state.editingTab === 'qr'){
+    const link = location.origin + location.pathname;
+    html += `<div class="qr-box">
+      <div id="qr-canvas"></div>
+      <p style="color:var(--chalk-dim); font-size:0.8rem; margin-top:12px;">Imprimez ce QR code sur vos tables.</p>
+      <div class="link-row"><input type="text" readonly value="${esc(link)}" id="link-field"><button class="btn btn-small" id="copy-link">Copier</button></div>
+    </div>`;
+  }
+
+  if(state.editingTab === 'reglages'){
+    html += `<div class="settings-row"><label>Nom du restaurant (FR)</label><input type="text" id="rname-fr" value="${esc(state.settings.name_fr)}"></div>
+      <div class="settings-row"><label>Restaurant name (EN)</label><input type="text" id="rname-en" value="${esc(state.settings.name_en||'')}"></div>
+      <button class="btn btn-gold" id="save-name-btn">Enregistrer</button>`;
+  }
+
+  html += `</div>`;
+  app.innerHTML = html;
+  bindManagerEvents();
+}
+
+function bindManagerEvents(){
+  document.getElementById('exit-btn').onclick = () => { location.hash=''; state.view='menu'; render(); };
+  document.getElementById('logout-btn').onclick = async () => { await supabase.auth.signOut(); location.hash=''; state.view='menu'; render(); };
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => { state.editingTab = t.dataset.tab; render(); });
+
+  if(state.editingTab === 'menu'){
+    document.querySelectorAll('[data-cat-name-fr]').forEach(inp => inp.onchange = async () => {
+      await supabase.from('categories').update({ name_fr: inp.value }).eq('id', inp.dataset.catNameFr);
+      await loadAll(); render();
+    });
+    document.querySelectorAll('[data-cat-name-en]').forEach(inp => inp.onchange = async () => {
+      await supabase.from('categories').update({ name_en: inp.value }).eq('id', inp.dataset.catNameEn);
+      await loadAll(); render();
+    });
+    document.querySelectorAll('[data-del-cat]').forEach(btn => btn.onclick = async () => {
+      if(!confirm('Supprimer cette catégorie et tous ses plats ?')) return;
+      await supabase.from('categories').delete().eq('id', btn.dataset.delCat);
+      await loadAll(); render();
+    });
+    document.querySelectorAll('[data-field]').forEach(field => field.onchange = async () => {
+      await supabase.from('items').update({ [field.dataset.field]: field.value }).eq('id', field.dataset.itemId);
+      await loadAll(); render();
+    });
+    document.querySelectorAll('[data-toggle]').forEach(tog => tog.onclick = async () => {
+      const item = state.items.find(i => i.id === tog.dataset.toggle);
+      await supabase.from('items').update({ out_of_stock: !item.out_of_stock }).eq('id', item.id);
+      await loadAll(); render();
+      showToast(!item.out_of_stock ? `${item.name_fr} marqué en rupture` : `${item.name_fr} de nouveau disponible`);
+    });
+    document.querySelectorAll('[data-del-item]').forEach(btn => btn.onclick = async () => {
+      await supabase.from('items').delete().eq('id', btn.dataset.delItem);
+      await loadAll(); render();
+    });
+    document.querySelectorAll('[data-add-item]').forEach(btn => btn.onclick = async () => {
+      await supabase.from('items').insert({ category_id: btn.dataset.addItem, name_fr: '', price: '' });
+      await loadAll(); render();
+    });
+    const addCatBtn = document.getElementById('add-cat-btn');
+    if(addCatBtn) addCatBtn.onclick = async () => {
+      const inp = document.getElementById('new-cat-input');
+      if(!inp.value.trim()) return;
+      await supabase.from('categories').insert({ name_fr: inp.value.trim() });
+      await loadAll(); render();
+    };
+  }
+
+  if(state.editingTab === 'qr'){
+    const link = location.origin + location.pathname;
+    new QRCode(document.getElementById('qr-canvas'), { text: link, width: 180, height: 180, colorDark:'#182922', colorLight:'#ffffff' });
+    document.getElementById('copy-link').onclick = () => navigator.clipboard.writeText(link).then(()=>showToast('Lien copié !'));
+  }
+
+  if(state.editingTab === 'reglages'){
+    document.getElementById('save-name-btn').onclick = async () => {
+      const name_fr = document.getElementById('rname-fr').value.trim() || 'Votre Restaurant';
+      const name_en = document.getElementById('rname-en').value.trim();
+      await supabase.from('restaurant_settings').update({ name_fr, name_en }).eq('id', 1);
+      await loadAll(); render();
+      showToast('Nom mis à jour.');
+    };
+  }
+}
+
+// Realtime: reflect DB changes live (e.g. manager updates on another device)
+function subscribeRealtime(){
+  supabase.channel('menu-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, async () => { await loadAll(); render(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, async () => { await loadAll(); render(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_settings' }, async () => { await loadAll(); render(); })
+    .subscribe();
+}
+
+window.addEventListener('hashchange', async () => {
+  if(location.hash === '#gestion' && state.view === 'menu'){
+    const { data: { session } } = await supabase.auth.getSession();
+    state.view = session ? 'manager' : 'login';
+    render();
+  }
+  if(location.hash !== '#gestion' && state.view !== 'menu'){ state.view='menu'; render(); }
+});
+
+(async function init(){
+  await loadAll();
+  if(state.view === 'checking'){
+    const { data: { session } } = await supabase.auth.getSession();
+    state.view = session ? 'manager' : 'login';
+  }
+  render();
+  subscribeRealtime();
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</body>
+</html>
