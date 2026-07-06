@@ -14,6 +14,13 @@
     --wipe:rgba(242,239,227,0.55); --line:rgba(242,239,227,0.16);
     --frame:#5b4130; --frame-dark:#3a2a1e; --radius:8px;
   }
+  body.light-theme{
+    --bg:#f4efe3; --bg2:#fffdf8;
+    --chalk:#2b2118; --chalk-dim:#6b5f4f;
+    --gold:#a9791f; --rust:#b3492f;
+    --wipe:rgba(43,33,24,0.35); --line:rgba(43,33,24,0.14);
+    --frame:#c9a877; --frame-dark:#a8865a;
+  }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -32,6 +39,12 @@
     box-shadow:0 0 0 6px var(--frame-dark), 0 20px 50px rgba(0,0,0,0.45);
     background:var(--bg2); padding:28px 22px 22px; position:relative;
   }
+  .theme-toggle{
+    position:absolute; top:16px; left:16px; width:32px; height:32px; border-radius:50%;
+    background:rgba(242,239,227,0.06); border:1px solid var(--line); color:var(--chalk);
+    font-size:1rem; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+  }
+  .theme-toggle:hover{ background:rgba(242,239,227,0.12); }
   .lang-toggle{
     position:absolute; top:16px; right:16px;
     display:flex; flex-wrap:wrap; justify-content:flex-end; gap:2px; max-width:130px;
@@ -60,14 +73,38 @@
     font-family:'Work Sans', sans-serif; letter-spacing:0.3px; transition:background .15s, color .15s;
   }
   .site-nav button:hover, .site-nav button.active{ background:var(--gold); color:#20180a; border-color:var(--gold); }
+  .site-nav button:active{ transform:scale(0.96); }
 
   .section-anchor{ scroll-margin-top:56px; }
+
+  /* Search & filters */
+  .filter-bar{ margin-bottom:14px; }
+  .search-input{
+    width:100%; background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk);
+    border-radius:20px; padding:9px 14px; font-size:0.88rem; font-family:'Work Sans', sans-serif; margin-bottom:8px;
+  }
+  .search-input::placeholder{ color:var(--chalk-dim); }
+  .tag-chip{
+    background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk-dim);
+    border-radius:14px; padding:4px 11px; font-size:0.78rem; cursor:pointer; user-select:none;
+  }
+  .tag-chip.active{ background:var(--gold); color:#20180a; border-color:var(--gold); font-weight:600; }
+  .allergen-filter{ margin-top:8px; }
+  .allergen-filter summary{ cursor:pointer; font-size:0.78rem; color:var(--chalk-dim); list-style:none; user-select:none; padding:4px 0; }
+  .allergen-filter summary::-webkit-details-marker{ display:none; }
+  .allergen-filter[open] summary{ margin-bottom:6px; }
+
+  /* Item photo */
+  .item-body{ display:flex; gap:10px; align-items:flex-start; }
+  .item-photo{ width:56px; height:56px; border-radius:6px; object-fit:cover; flex-shrink:0; border:1px solid var(--line); }
+  .item-content{ flex:1; min-width:0; }
 
   .category{ margin-bottom:22px; }
   .category-name{ font-family:'Caveat', cursive; font-weight:700; font-size:1.7rem; color:var(--gold); margin:0 0 10px; }
   .section-title{ font-family:'Caveat', cursive; font-weight:700; font-size:2.1rem; color:var(--chalk); text-align:center; margin:8px 0 4px; }
 
-  .item{ position:relative; padding:9px 0; }
+  .item{ position:relative; padding:9px 6px; border-radius:6px; transition:background .15s; }
+  .item:active{ background:rgba(242,239,227,0.04); }
   .item-row{ display:flex; align-items:baseline; gap:8px; }
   .item-name{ font-family:'Fraunces', serif; font-size:1.05rem; font-weight:500; }
   .item-name-wrap{ display:flex; align-items:baseline; gap:5px; white-space:nowrap; }
@@ -122,12 +159,17 @@
 
   .mgr-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
   .mgr-title{ font-family:'Caveat', cursive; font-size:1.9rem; }
-  .btn{ font-family:'Work Sans', sans-serif; font-size:0.82rem; font-weight:500; padding:8px 14px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; transition:background .15s; }
+  .btn{ font-family:'Work Sans', sans-serif; font-size:0.82rem; font-weight:500; padding:8px 14px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; transition:background .15s, transform .1s; }
   .btn:hover{ background:rgba(242,239,227,0.06); }
+  .btn:active{ transform:scale(0.96); }
   .btn-gold{ background:var(--gold); color:#20180a; border:none; font-weight:600; }
   .btn-gold:hover{ filter:brightness(1.08); }
   .btn-rust{ background:transparent; color:var(--rust); border:1px solid var(--rust); }
   .btn-small{ padding:5px 10px; font-size:0.75rem; }
+
+  input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible{
+    outline:2px solid var(--gold); outline-offset:1px;
+  }
 
   .tabs{ display:flex; gap:6px; margin:14px 0 18px; flex-wrap:wrap; }
   .tab{ flex:1; min-width:70px; text-align:center; padding:8px 4px; border-radius:6px; font-size:0.82rem; font-weight:500; cursor:pointer; border:1px solid var(--line); color:var(--chalk-dim); }
@@ -136,7 +178,7 @@
   .mgr-subhead{ font-family:'Caveat', cursive; font-size:1.5rem; color:var(--gold); margin:16px 0 6px; }
   .mgr-hint{ font-size:0.72rem; color:var(--chalk-dim); opacity:0.8; margin:-4px 0 10px; }
 
-  .mgr-cat{ border:1px solid var(--line); border-radius:6px; padding:12px 12px 14px; margin-bottom:14px; background:var(--bg2); }
+  .mgr-cat{ border:1px solid var(--line); border-radius:8px; padding:12px 12px 14px; margin-bottom:14px; background:rgba(242,239,227,0.025); box-shadow:0 2px 8px rgba(0,0,0,0.15); }
   .mgr-cat.sortable-ghost{ opacity:0.35; }
   .mgr-cat-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; }
   .mgr-cat-names{ display:flex; flex-direction:column; gap:2px; width:60%; }
@@ -149,7 +191,7 @@
   .drag-handle:active{ cursor:grabbing; }
   .cat-head-left{ display:flex; align-items:center; gap:6px; }
 
-  .mgr-item{ display:flex; flex-direction:column; gap:6px; padding:10px 8px; border-top:1px solid var(--line); background:var(--bg2); }
+  .mgr-item{ display:flex; flex-direction:column; gap:6px; padding:10px 8px; border-top:1px solid var(--line); background:rgba(242,239,227,0.02); border-radius:6px; margin-top:4px; }
   .mgr-item.sortable-ghost{ opacity:0.35; }
   .mgr-item-top{ display:flex; gap:8px; align-items:center; }
   .mgr-item input[type=text], .mgr-item textarea, .mgr-item select{
@@ -179,6 +221,10 @@
   .translations-block[open] summary{ border-bottom:1px solid var(--line); margin-bottom:8px; }
   .translations-block .lang-group{ margin-bottom:8px; }
   .translations-block .lang-group:last-child{ margin-bottom:0; }
+
+  .photo-row{ display:flex; gap:8px; align-items:center; }
+  .photo-row input{ flex:1; }
+  .photo-preview{ width:40px; height:40px; border-radius:5px; object-fit:cover; border:1px solid var(--line); flex-shrink:0; }
 
   .allergen-grid{ display:flex; flex-wrap:wrap; gap:5px; margin:4px 0; }
   .allergen-chip{ display:flex; align-items:center; gap:4px; background:rgba(242,239,227,0.05); border:1px solid var(--line); border-radius:12px; padding:3px 9px 3px 6px; font-size:0.72rem; color:var(--chalk-dim); cursor:pointer; }
@@ -236,6 +282,10 @@ const UI = {
   allergens:    { fr:"Allergènes", en:"Allergens", es:"Alérgenos", de:"Allergene" },
   mocktailTitle:{ fr:"Mocktails Signature", en:"Signature Mocktails", es:"Mocktails Signature", de:"Signature Mocktails" },
   highlights:   { fr:"Coups de Cœur", en:"Chef's Picks", es:"Recomendados", de:"Empfehlungen" },
+  searchPlaceholder: { fr:"Rechercher un plat…", en:"Search the menu…", es:"Buscar en la carta…", de:"Speisekarte durchsuchen…" },
+  all:          { fr:"Tous", en:"All", es:"Todos", de:"Alle" },
+  allergenFilter:{ fr:"Filtrer les allergènes", en:"Filter allergens", es:"Filtrar alérgenos", de:"Allergene filtern" },
+  noResults:    { fr:"Aucun résultat pour votre recherche.", en:"No results found.", es:"No se encontraron resultados.", de:"Keine Ergebnisse gefunden." },
 };
 function t(key, L){ return (UI[key] && (UI[key][L] || UI[key].fr)) || ''; }
 
@@ -273,6 +323,7 @@ function allergenLabel(code, L){ const a = ALLERGENS_14.find(a => a.code === cod
 let state = {
   view: location.hash === '#gestion' ? 'checking' : 'menu',
   lang: 'fr',
+  theme: localStorage.getItem('menuTheme') || 'dark',
   settings: null,
   categories: [],
   items: [],
@@ -280,7 +331,25 @@ let state = {
   mocktailOptions: [],
   editingTab: 'menu',
   loginError: '',
+  searchQuery: '',
+  searchFocused: false,
+  tagFilter: '',
+  excludedAllergens: [],
 };
+
+function applyTheme(){ document.body.classList.toggle('light-theme', state.theme === 'light'); }
+
+function matchesFilter(it){
+  const L = state.lang;
+  if(state.searchQuery.trim()){
+    const q = state.searchQuery.trim().toLowerCase();
+    const hay = (tr(it,'name',L) + ' ' + tr(it,'desc',L)).toLowerCase();
+    if(!hay.includes(q)) return false;
+  }
+  if(state.tagFilter && it.tag !== state.tagFilter) return false;
+  if(state.excludedAllergens.length && (it.allergens_list||[]).some(a => state.excludedAllergens.includes(a))) return false;
+  return true;
+}
 
 function esc(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showToast(msg){
@@ -298,7 +367,7 @@ async function loadAll(){
     supabase.from('formulas').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
     supabase.from('mocktail_options').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
   ]);
-  state.settings = settings || { name_fr: 'Votre Restaurant', name_en: 'Your Restaurant' };
+  state.settings = settings || { name_fr: 'Votre Restaurant', name_en: 'Your Restaurant', show_highlights: true };
   state.categories = categories || [];
   state.items = items || [];
   state.formulas = formulas || [];
@@ -306,6 +375,7 @@ async function loadAll(){
 }
 
 function itemsFor(catId){ return state.items.filter(i => i.category_id === catId); }
+function itemsForFiltered(catId){ return itemsFor(catId).filter(matchesFilter); }
 function foodCats(){ return state.categories.filter(c => (c.kind||'food') === 'food'); }
 function drinkCats(){ return state.categories.filter(c => c.kind === 'boisson'); }
 function mocktailOptionsByType(type){ return state.mocktailOptions.filter(o => o.type === type); }
@@ -343,9 +413,7 @@ function renderItemsList(items, L){
     const listLabels = list.map(c => allergenLabel(c, L));
     const allergenText = [...listLabels, ...(note ? [note] : [])].join(', ');
     const tag = TAGS[it.tag || ''];
-    html += `<div class="item ${it.out_of_stock ? 'out-of-stock' : ''}">
-      ${it.out_of_stock ? `<div class="sold-out-tag">${esc(t('soldOut', L))}</div>` : ''}
-      <div class="item-row">
+    const body = `<div class="item-row">
         <span class="item-name-wrap">
           ${tag && tag.emoji ? `<span class="item-tag" title="${esc(tag[L]||tag.fr)}">${tag.emoji}</span>` : ''}
           <span class="item-name">${esc(iName)}</span>
@@ -355,7 +423,13 @@ function renderItemsList(items, L){
         <span class="item-price">${esc(it.price)}</span>
       </div>
       ${iDesc ? `<div class="item-desc">${esc(iDesc)}</div>` : ''}
-      ${allergenText ? `<div class="allergen-info">${esc(t('allergens', L))} : ${esc(allergenText)}</div>` : ''}
+      ${allergenText ? `<div class="allergen-info">${esc(t('allergens', L))} : ${esc(allergenText)}</div>` : ''}`;
+    html += `<div class="item ${it.out_of_stock ? 'out-of-stock' : ''}">
+      ${it.out_of_stock ? `<div class="sold-out-tag">${esc(t('soldOut', L))}</div>` : ''}
+      ${it.image_url ? `<div class="item-body">
+        <img class="item-photo" src="${esc(it.image_url)}" alt="${esc(iName)}" loading="lazy" onerror="this.style.display='none'">
+        <div class="item-content">${body}</div>
+      </div>` : body}
     </div>`;
   });
   return html;
@@ -384,9 +458,10 @@ function renderMocktailBuilder(L){
   return html;
 }
 
-function getHighlights(){ return state.items.filter(i => i.tag === 'coeur' && !i.out_of_stock); }
+function getHighlights(){ return state.items.filter(i => i.tag === 'coeur' && !i.out_of_stock).filter(matchesFilter); }
 
 function renderHighlights(L){
+  if(state.settings.show_highlights === false) return '';
   const items = getHighlights();
   if(items.length === 0) return '';
   return `<div class="highlight-box">
@@ -397,26 +472,52 @@ function renderHighlights(L){
 
 // ---------- CUSTOMER MENU ----------
 function renderMenu(){
+  applyTheme();
   const L = state.lang;
   const name = tr(state.settings, 'name', L);
-  const fCats = foodCats().filter(c => itemsFor(c.id).length > 0);
-  const dCats = drinkCats().filter(c => itemsFor(c.id).length > 0);
-  const hasFormulas = state.formulas.length > 0;
+  const fCats = foodCats().filter(c => itemsForFiltered(c.id).length > 0);
+  const dCats = drinkCats().filter(c => itemsForFiltered(c.id).length > 0);
+  const hasFormulas = state.formulas.length > 0 && !state.searchQuery.trim() && !state.tagFilter && !state.excludedAllergens.length;
   const hasFood = fCats.length > 0;
-  const hasDrinks = dCats.length > 0 || state.mocktailOptions.length > 0;
+  const hasDrinks = dCats.length > 0 || (state.mocktailOptions.length > 0 && !state.searchQuery.trim() && !state.tagFilter && !state.excludedAllergens.length);
+  const filterActive = !!(state.searchQuery.trim() || state.tagFilter || state.excludedAllergens.length);
+  const noResults = filterActive && !hasFormulas && !hasFood && !hasDrinks;
+
+  const quickTags = ['coeur','piment','vg'];
 
   let html = `<div class="frame">
+    <button class="theme-toggle" id="theme-toggle-btn" title="Changer le thème">${state.theme==='light' ? '🌙' : '☀️'}</button>
     <div class="lang-toggle">
       ${LANGS.map(l => `<button data-lang="${l}" class="${L===l?'active':''}">${LANG_LABEL[l]}</button>`).join('')}
     </div>
     <div class="restaurant-name">${esc(name)}</div>
     <div class="subtitle">${esc(t('subtitle', L))}</div>
     <div class="site-nav">
-      ${hasFormulas ? `<button data-jump="sec-formules">${esc(t('formulas', L))}</button>` : ''}
-      ${hasFood ? `<button data-jump="sec-plats">${esc(t('food', L))}</button>` : ''}
-      ${hasDrinks ? `<button data-jump="sec-boissons">${esc(t('drinks', L))}</button>` : ''}
+      ${hasFormulas ? `<button data-jump="sec-formules">📋 ${esc(t('formulas', L))}</button>` : ''}
+      ${hasFood ? `<button data-jump="sec-plats">🍽 ${esc(t('food', L))}</button>` : ''}
+      ${hasDrinks ? `<button data-jump="sec-boissons">🍷 ${esc(t('drinks', L))}</button>` : ''}
+    </div>
+
+    <div class="filter-bar">
+      <input type="search" id="search-input" class="search-input" placeholder="🔍 ${esc(t('searchPlaceholder', L))}" value="${esc(state.searchQuery)}">
+      <div class="chip-row">
+        <span class="tag-chip ${state.tagFilter===''?'active':''}" data-tag-filter="">${esc(t('all', L))}</span>
+        ${quickTags.map(k => `<span class="tag-chip ${state.tagFilter===k?'active':''}" data-tag-filter="${k}">${TAGS[k].emoji} ${esc(TAGS[k][L]||TAGS[k].fr)}</span>`).join('')}
+      </div>
+      <details class="allergen-filter">
+        <summary>🚫 ${esc(t('allergenFilter', L))}${state.excludedAllergens.length ? ` (${state.excludedAllergens.length})` : ''}</summary>
+        <div class="allergen-grid">
+          ${ALLERGENS_14.map(a => `<label class="allergen-chip ${state.excludedAllergens.includes(a.code)?'checked':''}">
+            <input type="checkbox" data-exclude-allergen="${a.code}" ${state.excludedAllergens.includes(a.code)?'checked':''}> ${esc(a[L]||a.fr)}
+          </label>`).join('')}
+        </div>
+      </details>
     </div>
     ${renderHighlights(L)}`;
+
+  if(noResults){
+    html += `<div class="empty-note">${esc(t('noResults', L))}</div>`;
+  }
 
   if(hasFormulas){
     const note = tr(state.settings, 'formulas_note', L);
@@ -438,12 +539,12 @@ function renderMenu(){
 
   html += `<div class="section-anchor" id="sec-plats">`;
   if(!hasFood){
-    if(!hasFormulas) html += `<div class="empty-note">${esc(t('emptyMenu', L))}</div>`;
+    if(!hasFormulas && !filterActive) html += `<div class="empty-note">${esc(t('emptyMenu', L))}</div>`;
   } else {
     fCats.forEach(cat => {
       const catName = tr(cat, 'name', L);
       html += `<div class="category"><div class="category-name">${esc(catName)}</div>`;
-      html += renderItemsList(itemsFor(cat.id), L);
+      html += renderItemsList(itemsForFiltered(cat.id), L);
       html += `</div>`;
     });
   }
@@ -456,14 +557,14 @@ function renderMenu(){
     dCats.forEach(cat => {
       const catName = tr(cat, 'name', L);
       html += `<div class="category"><div class="category-name">${esc(catName)}</div>`;
-      html += renderItemsList(itemsFor(cat.id), L);
+      html += renderItemsList(itemsForFiltered(cat.id), L);
       html += `</div>`;
       if(!mocktailInserted && /cocktail/i.test(cat.name_fr + ' ' + (cat.name_en||''))){
         html += renderMocktailBuilder(L);
         mocktailInserted = true;
       }
     });
-    if(!mocktailInserted) html += renderMocktailBuilder(L);
+    if(!mocktailInserted && !filterActive) html += renderMocktailBuilder(L);
     html += `</div>`;
   }
 
@@ -476,6 +577,26 @@ function renderMenu(){
   document.querySelectorAll('[data-allergen-toggle]').forEach(btn => btn.onclick = () => {
     const info = btn.closest('.item').querySelector('.allergen-info');
     if(info) info.classList.toggle('show');
+  });
+  document.getElementById('theme-toggle-btn').onclick = () => {
+    state.theme = state.theme === 'light' ? 'dark' : 'light';
+    localStorage.setItem('menuTheme', state.theme);
+    render();
+  };
+  const searchInput = document.getElementById('search-input');
+  searchInput.oninput = () => { state.searchQuery = searchInput.value; state.searchFocused = true; render(); };
+  searchInput.onfocus = () => { state.searchFocused = true; };
+  searchInput.onblur = () => { state.searchFocused = false; };
+  if(state.searchFocused){ searchInput.focus(); const v = searchInput.value; searchInput.setSelectionRange(v.length, v.length); }
+  document.querySelectorAll('[data-tag-filter]').forEach(chip => chip.onclick = () => {
+    state.tagFilter = state.tagFilter === chip.dataset.tagFilter ? '' : chip.dataset.tagFilter;
+    render();
+  });
+  document.querySelectorAll('[data-exclude-allergen]').forEach(cb => cb.onchange = () => {
+    const code = cb.dataset.excludeAllergen;
+    if(cb.checked){ if(!state.excludedAllergens.includes(code)) state.excludedAllergens.push(code); }
+    else { state.excludedAllergens = state.excludedAllergens.filter(c => c !== code); }
+    render();
   });
   document.getElementById('mgr-link').onclick = async () => {
     location.hash = 'gestion';
@@ -578,6 +699,10 @@ function renderCategoryEditor(cat){
         </select>
       </div>
       <textarea placeholder="Description (FR, optionnel)" data-field="desc_fr" data-item-id="${it.id}">${esc(it.desc_fr)}</textarea>
+      <div class="photo-row">
+        <input type="text" placeholder="Lien de la photo (URL, optionnel)" value="${esc(it.image_url||'')}" data-field="image_url" data-item-id="${it.id}">
+        ${it.image_url ? `<img class="photo-preview" src="${esc(it.image_url)}" alt="" onerror="this.style.display='none'">` : ''}
+      </div>
       <span class="lang-tag">Allergènes — cochez ce qui s'applique</span>
       ${allergenGrid(it)}
       <input type="text" placeholder="Précision libre sur les allergènes (optionnel)" value="${esc(it.allergens_fr||'')}" data-field="allergens_fr" data-item-id="${it.id}">
@@ -715,6 +840,14 @@ function renderManager(){
       html += `<div class="settings-row"><label>Nom du restaurant (${LANG_LABEL[l]})</label><input type="text" id="rname-${l}" value="${esc(state.settings[`name_${l}`]||'')}"></div>`;
     });
     html += `<button class="btn btn-gold" id="save-name-btn">Enregistrer</button>`;
+
+    html += `<div class="divider"></div>
+    <div class="toggle-row">
+      <div class="toggle" data-toggle-highlights>
+        <div class="switch ${state.settings.show_highlights === false ? 'off' : ''}"></div>
+        <span>Afficher "Coups de Cœur" en haut de la carte</span>
+      </div>
+    </div>`;
   }
 
   html += `</div>`;
@@ -890,6 +1023,14 @@ function bindManagerEvents(){
       await loadAll(); render();
       showToast('Nom mis à jour.');
     };
+    const hToggle = document.querySelector('[data-toggle-highlights]');
+    if(hToggle) hToggle.onclick = async () => {
+      const newVal = state.settings.show_highlights === false ? true : false;
+      const { error } = await supabase.from('restaurant_settings').update({ show_highlights: newVal }).eq('id', 1);
+      if(!checkErr(error, "changement d'affichage des coups de cœur")) return;
+      await loadAll(); render();
+      showToast(newVal ? 'Coups de Cœur affichés.' : 'Coups de Cœur masqués.');
+    };
   }
 }
 
@@ -914,6 +1055,7 @@ window.addEventListener('hashchange', async () => {
 });
 
 (async function init(){
+  applyTheme();
   await loadAll();
   if(state.view === 'checking'){
     const { data: { session } } = await supabase.auth.getSession();
