@@ -45,16 +45,34 @@
     font-size:1rem; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
   }
   .theme-toggle:hover{ background:rgba(242,239,227,0.12); }
+
+  .call-server-btn{
+    position:fixed; bottom:20px; right:20px; z-index:40; background:var(--gold); color:#20180a;
+    border:none; border-radius:24px; padding:12px 18px; font-weight:600; font-size:0.85rem;
+    box-shadow:0 6px 18px rgba(0,0,0,0.3); cursor:pointer; font-family:'Work Sans', sans-serif;
+  }
+  .call-server-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .call-server-btn:not(:disabled):active{ transform:scale(0.96); }
   .lang-toggle{
     position:absolute; top:16px; right:16px;
-    display:flex; flex-wrap:wrap; justify-content:flex-end; gap:2px; max-width:130px;
-    border:1px solid var(--line); border-radius:14px; overflow:hidden;
   }
-  .lang-toggle button{
-    background:transparent; border:none; color:var(--chalk-dim);
-    font-size:0.7rem; font-weight:600; padding:5px 9px; cursor:pointer;
+  .lang-current{
+    width:34px; height:34px; border-radius:50%; border:1px solid var(--line);
+    background:rgba(242,239,227,0.06); font-size:1.15rem; cursor:pointer; padding:0;
+    display:flex; align-items:center; justify-content:center; line-height:1;
   }
-  .lang-toggle button.active{ background:var(--gold); color:#20180a; }
+  .lang-current:hover{ background:rgba(242,239,227,0.12); }
+  .lang-dropdown{
+    display:none; position:absolute; top:40px; right:0; flex-direction:column; gap:4px;
+    background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:6px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.25); z-index:20;
+  }
+  .lang-dropdown.open{ display:flex; }
+  .lang-flag-btn{
+    width:34px; height:34px; border-radius:50%; border:1px solid transparent; background:transparent;
+    font-size:1.15rem; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; line-height:1;
+  }
+  .lang-flag-btn:hover{ background:rgba(242,239,227,0.08); border-color:var(--line); }
 
   .restaurant-name{ font-family:'Caveat', cursive; font-weight:700; font-size:2.6rem; text-align:center; margin:0 0 2px; text-shadow:0 0 14px rgba(242,239,227,0.15); }
   .subtitle{ text-align:center; color:var(--chalk-dim); font-size:0.78rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:18px; }
@@ -174,6 +192,7 @@
   .tabs{ display:flex; gap:6px; margin:14px 0 18px; flex-wrap:wrap; }
   .tab{ flex:1; min-width:70px; text-align:center; padding:8px 4px; border-radius:6px; font-size:0.82rem; font-weight:500; cursor:pointer; border:1px solid var(--line); color:var(--chalk-dim); }
   .tab.active{ background:var(--gold); color:#20180a; border-color:var(--gold); font-weight:600; }
+  .tab-badge{ background:var(--rust); color:#fff; border-radius:10px; padding:0 6px; font-size:0.68rem; font-weight:700; }
 
   .mgr-subhead{ font-family:'Caveat', cursive; font-size:1.5rem; color:var(--gold); margin:16px 0 6px; }
   .mgr-hint{ font-size:0.72rem; color:var(--chalk-dim); opacity:0.8; margin:-4px 0 10px; }
@@ -247,6 +266,23 @@
   .settings-row input{ width:100%; background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk); border-radius:5px; padding:8px 10px; font-size:0.9rem; }
   .qr-box{ text-align:center; padding:10px 0 4px; }
   .qr-box canvas, .qr-box img{ background:#fff; padding:12px; border-radius:8px; }
+
+  /* Kitchen printable sheet — always plain black on white, ignores theme */
+  .kitchen-print{ background:#fff; color:#111; max-width:700px; margin:0 auto; padding:28px; font-family:Arial, Helvetica, sans-serif; border-radius:8px; }
+  .kitchen-print h1{ font-size:1.4rem; margin:0 0 2px; }
+  .kitchen-print .kp-date{ color:#666; font-size:0.85rem; margin:0 0 16px; text-transform:capitalize; }
+  .kitchen-print h2{ font-size:1.1rem; border-bottom:2px solid #222; padding-bottom:4px; margin:22px 0 8px; }
+  .kitchen-print h3{ font-size:0.95rem; color:#333; margin:14px 0 4px; }
+  .kitchen-print ul{ margin:0 0 6px; padding-left:18px; }
+  .kitchen-print li{ margin-bottom:6px; font-size:0.88rem; line-height:1.4; }
+  .kitchen-print .kp-rupture{ color:#b3492f; font-weight:700; }
+  .kitchen-print .kp-allergens{ color:#666; font-size:0.78rem; font-style:italic; }
+  .kp-header{ display:flex; justify-content:space-between; gap:8px; margin-bottom:16px; }
+  @media print{
+    body{ background:#fff !important; padding:0; }
+    .no-print{ display:none !important; }
+    .kitchen-print{ box-shadow:none; padding:0; }
+  }
 </style>
 </head>
 <body>
@@ -262,6 +298,7 @@ const app = document.getElementById('app');
 // ---------- Languages ----------
 const LANGS = ['fr','en','es','de'];
 const LANG_LABEL = { fr:'FR', en:'EN', es:'ES', de:'DE' };
+const LANG_FLAG = { fr:'🇫🇷', en:'🇬🇧', es:'🇪🇸', de:'🇩🇪' };
 const EXTRA_LANGS = LANGS.filter(l => l !== 'fr'); // used in manager "translations" blocks
 
 // tr(obj, 'name', 'es')  ->  obj.name_es if present, else obj.name_fr (fallback)
@@ -286,6 +323,11 @@ const UI = {
   all:          { fr:"Tous", en:"All", es:"Todos", de:"Alle" },
   allergenFilter:{ fr:"Filtrer les allergènes", en:"Filter allergens", es:"Filtrar alérgenos", de:"Allergene filtern" },
   noResults:    { fr:"Aucun résultat pour votre recherche.", en:"No results found.", es:"No se encontraron resultados.", de:"Keine Ergebnisse gefunden." },
+  storyTitle:   { fr:"Notre Histoire", en:"Our Story", es:"Nuestra Historia", de:"Unsere Geschichte" },
+  callServerBtn:{ fr:"🔔 Appeler un serveur", en:"🔔 Call a waiter", es:"🔔 Llamar a un camarero", de:"🔔 Kellner rufen" },
+  askTableNumber:{ fr:"Numéro de table (optionnel) :", en:"Table number (optional):", es:"Número de mesa (opcional):", de:"Tischnummer (optional):" },
+  callSent:     { fr:"Un serveur a été prévenu, merci de patienter 🙏", en:"A waiter has been notified, thank you for your patience 🙏", es:"Se ha avisado a un camarero, gracias por su paciencia 🙏", de:"Ein Kellner wurde benachrichtigt, danke für Ihre Geduld 🙏" },
+  callCooldown: { fr:"Un serveur a déjà été prévenu, merci de patienter.", en:"A waiter has already been notified, please wait.", es:"Ya se ha avisado a un camarero, por favor espere.", de:"Ein Kellner wurde bereits benachrichtigt, bitte warten Sie." },
 };
 function t(key, L){ return (UI[key] && (UI[key][L] || UI[key].fr)) || ''; }
 
@@ -320,15 +362,24 @@ const ALLERGENS_14 = [
 ];
 function allergenLabel(code, L){ const a = ALLERGENS_14.find(a => a.code === code); return a ? (a[L] || a.fr) : code; }
 
+function detectLang(){
+  const stored = localStorage.getItem('menuLang');
+  if(stored && LANGS.includes(stored)) return stored;
+  const nav = ((navigator.language || navigator.userLanguage || 'fr').slice(0,2)).toLowerCase();
+  return LANGS.includes(nav) ? nav : 'fr';
+}
+
 let state = {
   view: location.hash === '#gestion' ? 'checking' : 'menu',
-  lang: 'fr',
-  theme: localStorage.getItem('menuTheme') || 'dark',
+  lang: detectLang(),
+  theme: localStorage.getItem('menuTheme') || 'light',
+  langMenuOpen: false,
   settings: null,
   categories: [],
   items: [],
   formulas: [],
   mocktailOptions: [],
+  serverCalls: [],
   editingTab: 'menu',
   loginError: '',
   searchQuery: '',
@@ -374,6 +425,11 @@ async function loadAll(){
   state.mocktailOptions = mocktailOptions || [];
 }
 
+async function loadServerCalls(){
+  const { data, error } = await supabase.from('server_calls').select('*').order('created_at', { ascending: false });
+  if(!error) state.serverCalls = data || [];
+}
+
 function itemsFor(catId){ return state.items.filter(i => i.category_id === catId); }
 function itemsForFiltered(catId){ return itemsFor(catId).filter(matchesFilter); }
 function foodCats(){ return state.categories.filter(c => (c.kind||'food') === 'food'); }
@@ -396,6 +452,7 @@ function render(){
   if(state.view === 'menu') return renderMenu();
   if(state.view === 'login') return renderLogin();
   if(state.view === 'manager') return renderManager();
+  if(state.view === 'kitchen') return renderKitchen();
 }
 
 function renderChecking(){
@@ -470,6 +527,59 @@ function renderHighlights(L){
   </div>`;
 }
 
+function renderKitchen(){
+  const today = new Date().toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  let html = `<div class="kitchen-print">
+    <div class="kp-header no-print">
+      <button class="btn btn-small" id="kp-back">← Retour à la gestion</button>
+      <button class="btn btn-gold btn-small" id="kp-print">🖨 Imprimer / Enregistrer en PDF</button>
+    </div>
+    <h1>${esc(state.settings.name_fr)} — Fiche cuisine</h1>
+    <p class="kp-date">${esc(today)}</p>`;
+
+  if(state.formulas.length){
+    html += `<h2>Formules</h2><ul>`;
+    state.formulas.forEach(f => { html += `<li><strong>${esc(f.name_fr)}</strong> — ${esc(f.price)}</li>`; });
+    html += `</ul>`;
+  }
+
+  [['🍽 Plats', foodCats()], ['🍹 Boissons', drinkCats()]].forEach(([label, cats]) => {
+    const withItems = cats.filter(c => itemsFor(c.id).length > 0);
+    if(withItems.length === 0) return;
+    html += `<h2>${label}</h2>`;
+    withItems.forEach(cat => {
+      html += `<h3>${esc(cat.name_fr)}</h3><ul>`;
+      itemsFor(cat.id).forEach(it => {
+        const tag = TAGS[it.tag || ''];
+        const allergenCodes = (it.allergens_list||[]).map(c => allergenLabel(c,'fr'));
+        const allergenNote = [...allergenCodes, ...(it.allergens_fr ? [it.allergens_fr] : [])].join(', ');
+        html += `<li>
+          <strong>${esc(it.name_fr)}</strong>${tag && tag.emoji ? ' ' + tag.emoji : ''} — ${esc(it.price)}
+          ${it.out_of_stock ? ' <span class="kp-rupture">RUPTURE</span>' : ''}
+          ${allergenNote ? `<br><span class="kp-allergens">Allergènes : ${esc(allergenNote)}</span>` : ''}
+        </li>`;
+      });
+      html += `</ul>`;
+    });
+  });
+
+  if(state.mocktailOptions.length){
+    html += `<h2>Mocktails Signature — options</h2>`;
+    ['sirop','soft','supplement'].forEach(type => {
+      const opts = mocktailOptionsByType(type);
+      if(opts.length === 0) return;
+      html += `<h3>${MOCKTAIL_TYPE_LABEL[type].fr}</h3><ul>`;
+      opts.forEach(o => { html += `<li>${esc(o.name_fr)}${o.price ? ' — ' + esc(o.price) : ''}</li>`; });
+      html += `</ul>`;
+    });
+  }
+
+  html += `</div>`;
+  app.innerHTML = html;
+  document.getElementById('kp-back').onclick = () => { state.view = 'manager'; render(); };
+  document.getElementById('kp-print').onclick = () => window.print();
+}
+
 // ---------- CUSTOMER MENU ----------
 function renderMenu(){
   applyTheme();
@@ -488,7 +598,10 @@ function renderMenu(){
   let html = `<div class="frame">
     <button class="theme-toggle" id="theme-toggle-btn" title="Changer le thème">${state.theme==='light' ? '🌙' : '☀️'}</button>
     <div class="lang-toggle">
-      ${LANGS.map(l => `<button data-lang="${l}" class="${L===l?'active':''}">${LANG_LABEL[l]}</button>`).join('')}
+      <button class="lang-current" id="lang-current-btn" title="Changer de langue">${LANG_FLAG[L]}</button>
+      <div class="lang-dropdown ${state.langMenuOpen ? 'open' : ''}">
+        ${LANGS.filter(l => l !== L).map(l => `<button class="lang-flag-btn" data-lang="${l}" title="${LANG_LABEL[l]}">${LANG_FLAG[l]}</button>`).join('')}
+      </div>
     </div>
     <div class="restaurant-name">${esc(name)}</div>
     <div class="subtitle">${esc(t('subtitle', L))}</div>
@@ -568,9 +681,31 @@ function renderMenu(){
     html += `</div>`;
   }
 
-  html += `<div class="footer-link"><a id="mgr-link">${esc(t('managerArea', L))}</a></div></div>`;
+  const story = tr(state.settings, 'story', L);
+  if(story && !filterActive){
+    html += `<div class="divider"></div><div class="story-section section-anchor" id="sec-histoire">
+      <div class="category-name">${esc(t('storyTitle', L))}</div>
+      <div class="story-text">${esc(story)}</div>
+    </div>`;
+  }
+
+  if(state.settings.instagram_url){
+    html += `<div class="footer-link"><a href="${esc(state.settings.instagram_url)}" target="_blank" rel="noopener">📷 Instagram</a></div>`;
+  }
+
+  html += `<div class="footer-link"><a id="mgr-link">${esc(t('managerArea', L))}</a></div></div>
+  <button class="call-server-btn" id="call-server-btn">${esc(t('callServerBtn', L))}</button>`;
   app.innerHTML = html;
-  document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { state.lang = b.dataset.lang; render(); });
+  document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { state.lang = b.dataset.lang; state.langMenuOpen = false; localStorage.setItem('menuLang', state.lang); render(); });
+  document.getElementById('lang-current-btn').onclick = (e) => { e.stopPropagation(); state.langMenuOpen = !state.langMenuOpen; render(); };
+  if(state.langMenuOpen){
+    setTimeout(() => {
+      document.addEventListener('click', function closeLangMenu(e){
+        if(!e.target.closest('.lang-toggle')){ state.langMenuOpen = false; render(); }
+        document.removeEventListener('click', closeLangMenu);
+      }, { once: true });
+    }, 0);
+  }
   document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => {
     document.getElementById(b.dataset.jump).scrollIntoView({ behavior: 'smooth' });
   });
@@ -602,7 +737,18 @@ function renderMenu(){
     location.hash = 'gestion';
     const { data: { session } } = await supabase.auth.getSession();
     state.view = session ? 'manager' : 'login';
+    if(session) await loadServerCalls();
     render();
+  };
+  const callBtn = document.getElementById('call-server-btn');
+  callBtn.onclick = async () => {
+    const tableLabel = window.prompt(t('askTableNumber', L));
+    if(tableLabel === null) return;
+    callBtn.disabled = true;
+    const { error } = await supabase.from('server_calls').insert({ table_label: tableLabel.trim() });
+    if(error){ checkErr(error, "appel du serveur"); callBtn.disabled = false; return; }
+    showToast(t('callSent', L));
+    setTimeout(() => { const b = document.getElementById('call-server-btn'); if(b) b.disabled = false; }, 60000);
   };
 }
 
@@ -628,6 +774,7 @@ function renderLogin(){
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
     if(error){ state.loginError = 'Identifiants incorrects.'; render(); return; }
     state.view = 'manager';
+    await loadServerCalls();
     render();
   };
   document.getElementById('login-submit').onclick = submit;
@@ -727,10 +874,12 @@ function renderCategoryEditor(cat){
 }
 
 function renderManager(){
+  const pendingCalls = state.serverCalls.filter(c => c.status === 'pending').length;
   let html = `<div class="frame">
     <div class="mgr-header">
       <div class="mgr-title">Gestion de la carte</div>
-      <div style="display:flex; gap:6px;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn btn-small" id="kitchen-btn">🖨 Fiche cuisine</button>
         <button class="btn btn-small" id="exit-btn">Voir la carte</button>
         <button class="btn btn-small btn-rust" id="logout-btn">Déconnexion</button>
       </div>
@@ -739,6 +888,7 @@ function renderManager(){
       <div class="tab ${state.editingTab==='menu'?'active':''}" data-tab="menu">Carte</div>
       <div class="tab ${state.editingTab==='formules'?'active':''}" data-tab="formules">Formules</div>
       <div class="tab ${state.editingTab==='mocktails'?'active':''}" data-tab="mocktails">Mocktails</div>
+      <div class="tab ${state.editingTab==='appels'?'active':''}" data-tab="appels">Appels${pendingCalls ? ` <span class="tab-badge">${pendingCalls}</span>` : ''}</div>
       <div class="tab ${state.editingTab==='qr'?'active':''}" data-tab="qr">QR code</div>
       <div class="tab ${state.editingTab==='reglages'?'active':''}" data-tab="reglages">Réglages</div>
     </div>`;
@@ -825,6 +975,23 @@ function renderManager(){
     });
   }
 
+  if(state.editingTab === 'appels'){
+    const pending = state.serverCalls.filter(c => c.status === 'pending').sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+    if(pending.length === 0){
+      html += `<div class="empty-note">Aucun appel en attente. Les clients peuvent appeler un serveur depuis un bouton sur la carte.</div>`;
+    } else {
+      pending.forEach(c => {
+        const mins = Math.max(0, Math.round((Date.now() - new Date(c.created_at).getTime())/60000));
+        html += `<div class="mgr-item call-row">
+          <div class="toggle-row">
+            <span>${c.table_label ? `Table <strong>${esc(c.table_label)}</strong>` : 'Table non précisée'} — il y a ${mins} min</span>
+            <button class="btn btn-gold btn-small" data-done-call="${c.id}">✓ Traité</button>
+          </div>
+        </div>`;
+      });
+    }
+  }
+
   if(state.editingTab === 'qr'){
     const link = location.origin + location.pathname;
     html += `<div class="qr-box">
@@ -877,6 +1044,7 @@ function setupSortable(){
 
 function bindManagerEvents(){
   document.getElementById('exit-btn').onclick = () => { location.hash=''; state.view='menu'; render(); };
+  document.getElementById('kitchen-btn').onclick = () => { state.view = 'kitchen'; render(); };
   document.getElementById('logout-btn').onclick = async () => { await supabase.auth.signOut(); location.hash=''; state.view='menu'; render(); };
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => { state.editingTab = t.dataset.tab; render(); });
 
@@ -1009,6 +1177,14 @@ function bindManagerEvents(){
     });
   }
 
+  if(state.editingTab === 'appels'){
+    document.querySelectorAll('[data-done-call]').forEach(btn => btn.onclick = async () => {
+      const { error } = await supabase.from('server_calls').update({ status: 'done' }).eq('id', btn.dataset.doneCall);
+      if(!checkErr(error, "traitement de l'appel")) return;
+      await loadServerCalls(); render();
+    });
+  }
+
   if(state.editingTab === 'qr'){
     const link = location.origin + location.pathname;
     new QRCode(document.getElementById('qr-canvas'), { text: link, width: 180, height: 180, colorDark:'#182922', colorLight:'#ffffff' });
@@ -1042,6 +1218,9 @@ function subscribeRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_settings' }, async () => { await loadAll(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'formulas' }, async () => { await loadAll(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'mocktail_options' }, async () => { await loadAll(); render(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'server_calls' }, async () => {
+      if(state.view === 'manager'){ await loadServerCalls(); render(); }
+    })
     .subscribe();
 }
 
@@ -1049,6 +1228,7 @@ window.addEventListener('hashchange', async () => {
   if(location.hash === '#gestion' && state.view === 'menu'){
     const { data: { session } } = await supabase.auth.getSession();
     state.view = session ? 'manager' : 'login';
+    if(session) await loadServerCalls();
     render();
   }
   if(location.hash !== '#gestion' && state.view !== 'menu'){ state.view='menu'; render(); }
@@ -1060,6 +1240,7 @@ window.addEventListener('hashchange', async () => {
   if(state.view === 'checking'){
     const { data: { session } } = await supabase.auth.getSession();
     state.view = session ? 'manager' : 'login';
+    if(session) await loadServerCalls();
   }
   render();
   subscribeRealtime();
