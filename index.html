@@ -156,6 +156,8 @@
   .empty-note{ text-align:center; color:var(--chalk-dim); font-size:0.85rem; font-style:italic; padding:20px 0; }
   .formula-section{ margin-bottom:24px; }
   .formula-note{ font-size:0.78rem; color:var(--gold); font-style:italic; margin-top:10px; line-height:1.4; opacity:0.9; }
+  .story-section{ margin-bottom:22px; }
+  .story-text{ font-size:0.88rem; color:var(--chalk-dim); line-height:1.6; white-space:pre-line; }
   .mgr-note-block{ margin-bottom:16px; }
   .mgr-note-block textarea{ min-height:44px; }
   .footer-link{ text-align:center; margin-top:26px; font-size:0.72rem; }
@@ -1006,6 +1008,7 @@ function renderManager(){
     EXTRA_LANGS.forEach(l => {
       html += `<div class="settings-row"><label>Nom du restaurant (${LANG_LABEL[l]})</label><input type="text" id="rname-${l}" value="${esc(state.settings[`name_${l}`]||'')}"></div>`;
     });
+    html += `<div class="settings-row"><label>Lien Instagram (URL complète, ex. https://instagram.com/votrerestaurant)</label><input type="text" id="rinstagram" value="${esc(state.settings.instagram_url||'')}"></div>`;
     html += `<button class="btn btn-gold" id="save-name-btn">Enregistrer</button>`;
 
     html += `<div class="divider"></div>
@@ -1014,6 +1017,17 @@ function renderManager(){
         <div class="switch ${state.settings.show_highlights === false ? 'off' : ''}"></div>
         <span>Afficher "Coups de Cœur" en haut de la carte</span>
       </div>
+    </div>`;
+
+    html += `<div class="divider"></div>
+    <div class="mgr-subhead">📖 Histoire du restaurant</div>
+    <div class="mgr-note-block">
+      <span class="lang-tag">Texte affiché en bas de la carte (FR)</span>
+      <textarea id="story-fr" placeholder="Racontez l'histoire de votre établissement...">${esc(state.settings.story_fr||'')}</textarea>
+      ${translationsBlock('story', state.settings, 'settings-id', [
+        { field:'story', type:'textarea', placeholder:(l)=> `Histoire (${LANG_LABEL[l]}, optionnel)` }
+      ])}
+      <button class="btn btn-gold btn-small" id="save-story-btn" style="margin-top:6px;">Enregistrer l'histoire</button>
     </div>`;
   }
 
@@ -1193,11 +1207,14 @@ function bindManagerEvents(){
 
   if(state.editingTab === 'reglages'){
     document.getElementById('save-name-btn').onclick = async () => {
-      const payload = { name_fr: document.getElementById('rname-fr').value.trim() || 'Votre Restaurant' };
+      const payload = {
+        name_fr: document.getElementById('rname-fr').value.trim() || 'Votre Restaurant',
+        instagram_url: document.getElementById('rinstagram').value.trim(),
+      };
       EXTRA_LANGS.forEach(l => { payload[`name_${l}`] = document.getElementById(`rname-${l}`).value.trim(); });
       await supabase.from('restaurant_settings').update(payload).eq('id', 1);
       await loadAll(); render();
-      showToast('Nom mis à jour.');
+      showToast('Réglages mis à jour.');
     };
     const hToggle = document.querySelector('[data-toggle-highlights]');
     if(hToggle) hToggle.onclick = async () => {
@@ -1206,6 +1223,14 @@ function bindManagerEvents(){
       if(!checkErr(error, "changement d'affichage des coups de cœur")) return;
       await loadAll(); render();
       showToast(newVal ? 'Coups de Cœur affichés.' : 'Coups de Cœur masqués.');
+    };
+    document.getElementById('save-story-btn').onclick = async () => {
+      const payload = { story_fr: document.getElementById('story-fr').value };
+      document.querySelectorAll('[data-storyfield]').forEach(el => { payload[el.dataset.storyfield] = el.value; });
+      const { error } = await supabase.from('restaurant_settings').update(payload).eq('id', 1);
+      if(!checkErr(error, "enregistrement de l'histoire")) return;
+      await loadAll(); render();
+      showToast('Histoire enregistrée.');
     };
   }
 }
