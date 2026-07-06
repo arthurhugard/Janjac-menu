@@ -34,11 +34,12 @@
   }
   .lang-toggle{
     position:absolute; top:16px; right:16px;
-    display:flex; border:1px solid var(--line); border-radius:20px; overflow:hidden;
+    display:flex; flex-wrap:wrap; justify-content:flex-end; gap:2px; max-width:130px;
+    border:1px solid var(--line); border-radius:14px; overflow:hidden;
   }
   .lang-toggle button{
     background:transparent; border:none; color:var(--chalk-dim);
-    font-size:0.75rem; font-weight:600; padding:5px 12px; cursor:pointer;
+    font-size:0.7rem; font-weight:600; padding:5px 9px; cursor:pointer;
   }
   .lang-toggle button.active{ background:var(--gold); color:#20180a; }
 
@@ -47,15 +48,42 @@
   .divider{ height:1px; background:var(--line); margin:14px 0 18px; position:relative; }
   .divider::after{ content:'❧'; position:absolute; left:50%; top:50%; transform:translate(-50%,-52%); background:var(--bg2); padding:0 10px; color:var(--gold); font-size:0.9rem; }
 
+  /* Header nav (jump to sections) */
+  .site-nav{
+    position:sticky; top:-1px; z-index:10; display:flex; gap:6px;
+    background:var(--bg2); padding:8px 0 12px; margin-bottom:6px;
+    border-bottom:1px solid var(--line);
+  }
+  .site-nav button{
+    flex:1; background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk-dim);
+    border-radius:20px; padding:7px 6px; font-size:0.76rem; font-weight:600; cursor:pointer;
+    font-family:'Work Sans', sans-serif; letter-spacing:0.3px; transition:background .15s, color .15s;
+  }
+  .site-nav button:hover, .site-nav button.active{ background:var(--gold); color:#20180a; border-color:var(--gold); }
+
+  .section-anchor{ scroll-margin-top:56px; }
+
   .category{ margin-bottom:22px; }
   .category-name{ font-family:'Caveat', cursive; font-weight:700; font-size:1.7rem; color:var(--gold); margin:0 0 10px; }
+  .section-title{ font-family:'Caveat', cursive; font-weight:700; font-size:2.1rem; color:var(--chalk); text-align:center; margin:8px 0 4px; }
 
   .item{ position:relative; padding:9px 0; }
   .item-row{ display:flex; align-items:baseline; gap:8px; }
-  .item-name{ font-family:'Fraunces', serif; font-size:1.05rem; font-weight:500; white-space:nowrap; }
+  .item-name{ font-family:'Fraunces', serif; font-size:1.05rem; font-weight:500; }
+  .item-name-wrap{ display:flex; align-items:baseline; gap:5px; white-space:nowrap; }
+  .item-tag{ font-size:0.9rem; }
   .item-leader{ flex:1; border-bottom:1px dotted var(--chalk-dim); margin-bottom:4px; opacity:0.5; }
   .item-price{ font-family:'Fraunces', serif; color:var(--gold); font-weight:600; font-size:1rem; white-space:nowrap; }
   .item-desc{ font-size:0.83rem; color:var(--chalk-dim); margin-top:2px; line-height:1.35; max-width:92%; }
+
+  .allergen-btn{
+    flex-shrink:0; width:16px; height:16px; border-radius:50%; border:1px solid var(--chalk-dim);
+    color:var(--chalk-dim); font-size:0.62rem; line-height:14px; text-align:center; cursor:pointer;
+    background:transparent; padding:0; font-family:'Work Sans', sans-serif; font-style:italic;
+  }
+  .allergen-btn:hover{ color:var(--gold); border-color:var(--gold); }
+  .allergen-info{ display:none; font-size:0.76rem; color:var(--gold); opacity:0.9; margin-top:3px; font-style:italic; }
+  .allergen-info.show{ display:block; }
 
   .item.out-of-stock .item-name, .item.out-of-stock .item-desc, .item.out-of-stock .item-price{
     opacity:0.38; text-decoration:line-through; text-decoration-color:var(--wipe); text-decoration-thickness:3px;
@@ -79,6 +107,19 @@
   .footer-link a{ color:var(--chalk-dim); text-decoration:none; border-bottom:1px dotted var(--chalk-dim); opacity:0.7; cursor:pointer; }
   .footer-link a:hover{ opacity:1; }
 
+  /* Mocktail signature builder (client) */
+  .mocktail-box{ border:1px dashed var(--gold); border-radius:8px; padding:14px 14px 8px; margin-bottom:22px; }
+  .mocktail-intro{ font-size:0.84rem; color:var(--chalk-dim); line-height:1.4; margin-bottom:12px; }
+  .mocktail-col-title{ font-size:0.72rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold); margin-bottom:6px; }
+  .mocktail-group{ margin-bottom:12px; }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{ background:rgba(242,239,227,0.07); border:1px solid var(--line); color:var(--chalk); border-radius:14px; padding:4px 11px; font-size:0.8rem; }
+  .chip .chip-price{ color:var(--gold); margin-left:5px; font-weight:600; }
+
+  /* Coups de coeur */
+  .highlight-box{ border:1.5px solid var(--gold); border-radius:8px; padding:14px 14px 6px; margin-bottom:22px; background:rgba(227,178,60,0.06); }
+  .highlight-title{ font-family:'Caveat', cursive; font-weight:700; font-size:1.9rem; color:var(--gold); text-align:center; margin:0 0 8px; }
+
   .mgr-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
   .mgr-title{ font-family:'Caveat', cursive; font-size:1.9rem; }
   .btn{ font-family:'Work Sans', sans-serif; font-size:0.82rem; font-weight:500; padding:8px 14px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; transition:background .15s; }
@@ -88,25 +129,35 @@
   .btn-rust{ background:transparent; color:var(--rust); border:1px solid var(--rust); }
   .btn-small{ padding:5px 10px; font-size:0.75rem; }
 
-  .tabs{ display:flex; gap:6px; margin:14px 0 18px; }
-  .tab{ flex:1; text-align:center; padding:8px 4px; border-radius:6px; font-size:0.82rem; font-weight:500; cursor:pointer; border:1px solid var(--line); color:var(--chalk-dim); }
+  .tabs{ display:flex; gap:6px; margin:14px 0 18px; flex-wrap:wrap; }
+  .tab{ flex:1; min-width:70px; text-align:center; padding:8px 4px; border-radius:6px; font-size:0.82rem; font-weight:500; cursor:pointer; border:1px solid var(--line); color:var(--chalk-dim); }
   .tab.active{ background:var(--gold); color:#20180a; border-color:var(--gold); font-weight:600; }
 
-  .mgr-cat{ border:1px solid var(--line); border-radius:6px; padding:12px 12px 14px; margin-bottom:14px; }
+  .mgr-subhead{ font-family:'Caveat', cursive; font-size:1.5rem; color:var(--gold); margin:16px 0 6px; }
+  .mgr-hint{ font-size:0.72rem; color:var(--chalk-dim); opacity:0.8; margin:-4px 0 10px; }
+
+  .mgr-cat{ border:1px solid var(--line); border-radius:6px; padding:12px 12px 14px; margin-bottom:14px; background:var(--bg2); }
+  .mgr-cat.sortable-ghost{ opacity:0.35; }
   .mgr-cat-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; }
-  .mgr-cat-names{ display:flex; flex-direction:column; gap:2px; width:65%; }
+  .mgr-cat-names{ display:flex; flex-direction:column; gap:2px; width:60%; }
   .mgr-cat-head input{ font-family:'Caveat', cursive; font-size:1.25rem; background:transparent; border:none; border-bottom:1px dashed var(--line); color:var(--gold); padding:2px 0; width:100%; }
   .mgr-cat-head input.en{ color:var(--chalk-dim); font-size:1.05rem; }
   .lang-tag{ font-size:0.62rem; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
+  .kind-badge{ font-size:0.62rem; text-transform:uppercase; letter-spacing:1px; color:#20180a; background:var(--chalk-dim); border-radius:4px; padding:2px 6px; white-space:nowrap; }
+  .kind-badge.boisson{ background:var(--gold); }
+  .drag-handle{ cursor:grab; color:var(--chalk-dim); font-size:1.1rem; padding:2px 6px; user-select:none; touch-action:none; }
+  .drag-handle:active{ cursor:grabbing; }
+  .cat-head-left{ display:flex; align-items:center; gap:6px; }
 
-  .mgr-item{ display:flex; flex-direction:column; gap:6px; padding:10px 0; border-top:1px solid var(--line); }
+  .mgr-item{ display:flex; flex-direction:column; gap:6px; padding:10px 8px; border-top:1px solid var(--line); background:var(--bg2); }
+  .mgr-item.sortable-ghost{ opacity:0.35; }
   .mgr-item-top{ display:flex; gap:8px; align-items:center; }
-  .mgr-item input[type=text], .mgr-item textarea{
+  .mgr-item input[type=text], .mgr-item textarea, .mgr-item select{
     background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk); border-radius:5px;
     padding:6px 8px; font-family:'Work Sans', sans-serif; font-size:0.85rem; width:100%;
   }
   .mgr-item textarea{ resize:vertical; min-height:36px; }
-  .field-name{ flex:2; } .field-price{ flex:0 0 78px; }
+  .field-name{ flex:2; } .field-price{ flex:0 0 78px; } .field-tag{ flex:0 0 108px; }
   .field-block{ display:flex; flex-direction:column; gap:1px; width:100%; }
   .toggle-row{ display:flex; align-items:center; justify-content:space-between; margin-top:2px; }
   .toggle{ display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:0.82rem; }
@@ -119,6 +170,20 @@
   .add-item-btn:hover{ color:var(--chalk); border-color:var(--chalk-dim); }
   .new-cat-row{ display:flex; gap:8px; margin-top:4px; }
   .new-cat-row input{ flex:1; background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk); border-radius:5px; padding:8px 10px; font-size:0.85rem; }
+
+  .translations-block{ border:1px dashed var(--line); border-radius:6px; padding:0 8px 8px; margin-top:2px; }
+  .translations-block summary{ cursor:pointer; padding:8px 0; font-size:0.78rem; color:var(--chalk-dim); list-style:none; user-select:none; }
+  .translations-block summary::-webkit-details-marker{ display:none; }
+  .translations-block summary::before{ content:'▸ '; color:var(--gold); }
+  .translations-block[open] summary::before{ content:'▾ '; }
+  .translations-block[open] summary{ border-bottom:1px solid var(--line); margin-bottom:8px; }
+  .translations-block .lang-group{ margin-bottom:8px; }
+  .translations-block .lang-group:last-child{ margin-bottom:0; }
+
+  .allergen-grid{ display:flex; flex-wrap:wrap; gap:5px; margin:4px 0; }
+  .allergen-chip{ display:flex; align-items:center; gap:4px; background:rgba(242,239,227,0.05); border:1px solid var(--line); border-radius:12px; padding:3px 9px 3px 6px; font-size:0.72rem; color:var(--chalk-dim); cursor:pointer; }
+  .allergen-chip input{ margin:0; accent-color:var(--gold); }
+  .allergen-chip.checked{ color:var(--chalk); border-color:var(--gold); }
 
   .login-screen{ text-align:center; padding:30px 10px; }
   .login-screen p{ color:var(--chalk-dim); font-size:0.85rem; margin-bottom:14px; }
@@ -148,6 +213,63 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const app = document.getElementById('app');
 
+// ---------- Languages ----------
+const LANGS = ['fr','en','es','de'];
+const LANG_LABEL = { fr:'FR', en:'EN', es:'ES', de:'DE' };
+const EXTRA_LANGS = LANGS.filter(l => l !== 'fr'); // used in manager "translations" blocks
+
+// tr(obj, 'name', 'es')  ->  obj.name_es if present, else obj.name_fr (fallback)
+function tr(obj, field, lang){
+  if(!obj) return '';
+  if(lang !== 'fr' && obj[`${field}_${lang}`]) return obj[`${field}_${lang}`];
+  return obj[`${field}_fr`] || '';
+}
+
+const UI = {
+  subtitle:     { fr:"La carte du jour", en:"Today's menu", es:"El menú del día", de:"Heutige Karte" },
+  formulas:     { fr:"Nos Formules", en:"Set Menus", es:"Nuestros Menús", de:"Unsere Menüs" },
+  drinks:       { fr:"Boissons", en:"Drinks", es:"Bebidas", de:"Getränke" },
+  food:         { fr:"Plats", en:"Food", es:"Platos", de:"Gerichte" },
+  soldOut:      { fr:"épuisé", en:"sold out", es:"agotado", de:"ausverkauft" },
+  emptyMenu:    { fr:"La carte sera affichée ici dès que le gérant l'aura complétée.", en:"The menu will appear here once the manager has filled it in.", es:"La carta aparecerá aquí en cuanto el gerente la complete.", de:"Die Karte wird hier angezeigt, sobald der Manager sie ausgefüllt hat." },
+  managerArea:  { fr:"Espace gérant", en:"Manager area", es:"Área de gestión", de:"Verwaltungsbereich" },
+  allergens:    { fr:"Allergènes", en:"Allergens", es:"Alérgenos", de:"Allergene" },
+  mocktailTitle:{ fr:"Mocktails Signature", en:"Signature Mocktails", es:"Mocktails Signature", de:"Signature Mocktails" },
+  highlights:   { fr:"Coups de Cœur", en:"Chef's Picks", es:"Recomendados", de:"Empfehlungen" },
+};
+function t(key, L){ return (UI[key] && (UI[key][L] || UI[key].fr)) || ''; }
+
+const TAGS = {
+  '':      { emoji: '',   fr:'Aucun',        en:'None',       es:'Ninguno',     de:'Keine' },
+  coeur:   { emoji: '❤️', fr:'Coup de cœur', en:'Favourite',  es:'Favorito',    de:'Favorit' },
+  piment:  { emoji: '🌶️', fr:'Piquant',      en:'Spicy',      es:'Picante',     de:'Scharf' },
+  vg:      { emoji: '🌱', fr:'Végé',         en:'Veggie',     es:'Vegetariano', de:'Vegetarisch' },
+};
+const MOCKTAIL_TYPE_LABEL = {
+  sirop:      { fr:'Base sirop',  en:'Syrup base', es:'Base de sirope', de:'Sirup-Basis' },
+  soft:       { fr:'Soft',        en:'Soft drink',  es:'Refresco',       de:'Softdrink' },
+  supplement: { fr:'Suppléments', en:'Extras',      es:'Extras',         de:'Extras' },
+};
+
+// 14 allergènes réglementaires UE
+const ALLERGENS_14 = [
+  { code:'gluten',       fr:'Gluten',           en:'Gluten',        es:'Gluten',           de:'Gluten' },
+  { code:'crustaces',    fr:'Crustacés',        en:'Crustaceans',   es:'Crustáceos',       de:'Krebstiere' },
+  { code:'oeufs',        fr:'Œufs',             en:'Eggs',          es:'Huevos',           de:'Eier' },
+  { code:'poissons',     fr:'Poissons',         en:'Fish',          es:'Pescado',          de:'Fisch' },
+  { code:'arachides',    fr:'Arachides',        en:'Peanuts',       es:'Cacahuetes',       de:'Erdnüsse' },
+  { code:'soja',         fr:'Soja',             en:'Soy',           es:'Soja',             de:'Soja' },
+  { code:'lait',         fr:'Lait',             en:'Milk',          es:'Leche',            de:'Milch' },
+  { code:'fruits_coque', fr:'Fruits à coque',   en:'Tree nuts',     es:'Frutos de cáscara',de:'Schalenfrüchte' },
+  { code:'celeri',       fr:'Céleri',           en:'Celery',        es:'Apio',             de:'Sellerie' },
+  { code:'moutarde',     fr:'Moutarde',         en:'Mustard',       es:'Mostaza',          de:'Senf' },
+  { code:'sesame',       fr:'Sésame',           en:'Sesame',        es:'Sésamo',           de:'Sesam' },
+  { code:'sulfites',     fr:'Sulfites',         en:'Sulphites',     es:'Sulfitos',         de:'Sulfite' },
+  { code:'lupin',        fr:'Lupin',            en:'Lupin',         es:'Altramuces',       de:'Lupinen' },
+  { code:'mollusques',   fr:'Mollusques',       en:'Molluscs',      es:'Moluscos',         de:'Weichtiere' },
+];
+function allergenLabel(code, L){ const a = ALLERGENS_14.find(a => a.code === code); return a ? (a[L] || a.fr) : code; }
+
 let state = {
   view: location.hash === '#gestion' ? 'checking' : 'menu',
   lang: 'fr',
@@ -155,6 +277,7 @@ let state = {
   categories: [],
   items: [],
   formulas: [],
+  mocktailOptions: [],
   editingTab: 'menu',
   loginError: '',
 };
@@ -168,19 +291,24 @@ function showToast(msg){
 }
 
 async function loadAll(){
-  const [{ data: settings }, { data: categories }, { data: items }, { data: formulas }] = await Promise.all([
+  const [{ data: settings }, { data: categories }, { data: items }, { data: formulas }, { data: mocktailOptions }] = await Promise.all([
     supabase.from('restaurant_settings').select('*').eq('id', 1).maybeSingle(),
-    supabase.from('categories').select('*').order('created_at', { ascending: true }),
-    supabase.from('items').select('*').order('created_at', { ascending: true }),
-    supabase.from('formulas').select('*').order('created_at', { ascending: true }),
+    supabase.from('categories').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+    supabase.from('items').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+    supabase.from('formulas').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+    supabase.from('mocktail_options').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
   ]);
-  state.settings = settings || { name_fr: 'Votre Restaurant', name_en: 'Your Restaurant', formulas_note_fr: '', formulas_note_en: '' };
+  state.settings = settings || { name_fr: 'Votre Restaurant', name_en: 'Your Restaurant' };
   state.categories = categories || [];
   state.items = items || [];
   state.formulas = formulas || [];
+  state.mocktailOptions = mocktailOptions || [];
 }
 
 function itemsFor(catId){ return state.items.filter(i => i.category_id === catId); }
+function foodCats(){ return state.categories.filter(c => (c.kind||'food') === 'food'); }
+function drinkCats(){ return state.categories.filter(c => c.kind === 'boisson'); }
+function mocktailOptionsByType(type){ return state.mocktailOptions.filter(o => o.type === type); }
 
 // Renvoie true si l'opération a réussi. Si une erreur Supabase est présente,
 // l'affiche clairement (au lieu de l'ignorer silencieusement) et renvoie false.
@@ -204,25 +332,98 @@ function renderChecking(){
   app.innerHTML = `<div class="frame"><div class="empty-note">Vérification…</div></div>`;
 }
 
+// ---------- shared: render a list of items (food or drinks) ----------
+function renderItemsList(items, L){
+  let html = '';
+  items.forEach(it => {
+    const iName = tr(it, 'name', L);
+    const iDesc = tr(it, 'desc', L);
+    const note = tr(it, 'allergens', L);
+    const list = it.allergens_list || [];
+    const listLabels = list.map(c => allergenLabel(c, L));
+    const allergenText = [...listLabels, ...(note ? [note] : [])].join(', ');
+    const tag = TAGS[it.tag || ''];
+    html += `<div class="item ${it.out_of_stock ? 'out-of-stock' : ''}">
+      ${it.out_of_stock ? `<div class="sold-out-tag">${esc(t('soldOut', L))}</div>` : ''}
+      <div class="item-row">
+        <span class="item-name-wrap">
+          ${tag && tag.emoji ? `<span class="item-tag" title="${esc(tag[L]||tag.fr)}">${tag.emoji}</span>` : ''}
+          <span class="item-name">${esc(iName)}</span>
+          ${allergenText ? `<button class="allergen-btn" data-allergen-toggle title="${esc(t('allergens', L))}">i</button>` : ''}
+        </span>
+        <span class="item-leader"></span>
+        <span class="item-price">${esc(it.price)}</span>
+      </div>
+      ${iDesc ? `<div class="item-desc">${esc(iDesc)}</div>` : ''}
+      ${allergenText ? `<div class="allergen-info">${esc(t('allergens', L))} : ${esc(allergenText)}</div>` : ''}
+    </div>`;
+  });
+  return html;
+}
+
+function renderMocktailBuilder(L){
+  if(state.mocktailOptions.length === 0) return '';
+  const intro = tr(state.settings, 'mocktail_intro', L);
+  let html = `<div class="mocktail-box">
+    <div class="category-name">${esc(t('mocktailTitle', L))}</div>
+    ${intro ? `<div class="mocktail-intro">${esc(intro)}</div>` : ''}`;
+  ['sirop','soft','supplement'].forEach(type => {
+    const opts = mocktailOptionsByType(type);
+    if(opts.length === 0) return;
+    const label = MOCKTAIL_TYPE_LABEL[type];
+    html += `<div class="mocktail-group">
+      <div class="mocktail-col-title">${esc(label[L]||label.fr)}</div>
+      <div class="chip-row">`;
+    opts.forEach(o => {
+      const oName = tr(o, 'name', L);
+      html += `<span class="chip">${esc(oName)}${o.price ? `<span class="chip-price">${esc(o.price)}</span>` : ''}</span>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function getHighlights(){ return state.items.filter(i => i.tag === 'coeur' && !i.out_of_stock); }
+
+function renderHighlights(L){
+  const items = getHighlights();
+  if(items.length === 0) return '';
+  return `<div class="highlight-box">
+    <div class="highlight-title">❤️ ${esc(t('highlights', L))}</div>
+    ${renderItemsList(items, L)}
+  </div>`;
+}
+
 // ---------- CUSTOMER MENU ----------
 function renderMenu(){
   const L = state.lang;
-  const name = L === 'en' && state.settings.name_en ? state.settings.name_en : state.settings.name_fr;
+  const name = tr(state.settings, 'name', L);
+  const fCats = foodCats().filter(c => itemsFor(c.id).length > 0);
+  const dCats = drinkCats().filter(c => itemsFor(c.id).length > 0);
+  const hasFormulas = state.formulas.length > 0;
+  const hasFood = fCats.length > 0;
+  const hasDrinks = dCats.length > 0 || state.mocktailOptions.length > 0;
+
   let html = `<div class="frame">
     <div class="lang-toggle">
-      <button data-lang="fr" class="${L==='fr'?'active':''}">FR</button>
-      <button data-lang="en" class="${L==='en'?'active':''}">EN</button>
+      ${LANGS.map(l => `<button data-lang="${l}" class="${L===l?'active':''}">${LANG_LABEL[l]}</button>`).join('')}
     </div>
     <div class="restaurant-name">${esc(name)}</div>
-    <div class="subtitle">${L==='en' ? "Today's menu" : "La carte du jour"}</div>
-    <div class="divider"></div>`;
+    <div class="subtitle">${esc(t('subtitle', L))}</div>
+    <div class="site-nav">
+      ${hasFormulas ? `<button data-jump="sec-formules">${esc(t('formulas', L))}</button>` : ''}
+      ${hasFood ? `<button data-jump="sec-plats">${esc(t('food', L))}</button>` : ''}
+      ${hasDrinks ? `<button data-jump="sec-boissons">${esc(t('drinks', L))}</button>` : ''}
+    </div>
+    ${renderHighlights(L)}`;
 
-  if(state.formulas.length > 0){
-    const note = L==='en' && state.settings.formulas_note_en ? state.settings.formulas_note_en : state.settings.formulas_note_fr;
-    html += `<div class="formula-section">
-      <div class="category-name">${L==='en' ? 'Set Menus' : 'Nos Formules'}</div>`;
+  if(hasFormulas){
+    const note = tr(state.settings, 'formulas_note', L);
+    html += `<div class="formula-section section-anchor" id="sec-formules">
+      <div class="category-name">${esc(t('formulas', L))}</div>`;
     state.formulas.forEach(f => {
-      const fName = L === 'en' && f.name_en ? f.name_en : f.name_fr;
+      const fName = tr(f, 'name', L);
       html += `<div class="item">
         <div class="item-row">
           <span class="item-name">${esc(fName)}</span>
@@ -235,33 +436,47 @@ function renderMenu(){
     html += `</div><div class="divider"></div>`;
   }
 
-  const catsWithItems = state.categories.filter(c => itemsFor(c.id).length > 0);
-  if(catsWithItems.length === 0){
-    html += `<div class="empty-note">${L==='en' ? 'The menu will appear here once the manager has filled it in.' : "La carte sera affichée ici dès que le gérant l'aura complétée."}</div>`;
+  html += `<div class="section-anchor" id="sec-plats">`;
+  if(!hasFood){
+    if(!hasFormulas) html += `<div class="empty-note">${esc(t('emptyMenu', L))}</div>`;
   } else {
-    catsWithItems.forEach(cat => {
-      const catName = L === 'en' && cat.name_en ? cat.name_en : cat.name_fr;
+    fCats.forEach(cat => {
+      const catName = tr(cat, 'name', L);
       html += `<div class="category"><div class="category-name">${esc(catName)}</div>`;
-      itemsFor(cat.id).forEach(it => {
-        const iName = L === 'en' && it.name_en ? it.name_en : it.name_fr;
-        const iDesc = L === 'en' && it.desc_en ? it.desc_en : it.desc_fr;
-        html += `<div class="item ${it.out_of_stock ? 'out-of-stock' : ''}">
-          ${it.out_of_stock ? `<div class="sold-out-tag">${L==='en' ? 'sold out' : 'épuisé'}</div>` : ''}
-          <div class="item-row">
-            <span class="item-name">${esc(iName)}</span>
-            <span class="item-leader"></span>
-            <span class="item-price">${esc(it.price)}</span>
-          </div>
-          ${iDesc ? `<div class="item-desc">${esc(iDesc)}</div>` : ''}
-        </div>`;
-      });
+      html += renderItemsList(itemsFor(cat.id), L);
       html += `</div>`;
     });
   }
+  html += `</div>`;
 
-  html += `<div class="footer-link"><a id="mgr-link">${L==='en' ? 'Manager area' : 'Espace gérant'}</a></div></div>`;
+  if(hasDrinks){
+    html += `<div class="divider"></div><div class="section-anchor" id="sec-boissons">
+      <div class="section-title">${esc(t('drinks', L))}</div>`;
+    let mocktailInserted = false;
+    dCats.forEach(cat => {
+      const catName = tr(cat, 'name', L);
+      html += `<div class="category"><div class="category-name">${esc(catName)}</div>`;
+      html += renderItemsList(itemsFor(cat.id), L);
+      html += `</div>`;
+      if(!mocktailInserted && /cocktail/i.test(cat.name_fr + ' ' + (cat.name_en||''))){
+        html += renderMocktailBuilder(L);
+        mocktailInserted = true;
+      }
+    });
+    if(!mocktailInserted) html += renderMocktailBuilder(L);
+    html += `</div>`;
+  }
+
+  html += `<div class="footer-link"><a id="mgr-link">${esc(t('managerArea', L))}</a></div></div>`;
   app.innerHTML = html;
   document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { state.lang = b.dataset.lang; render(); });
+  document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => {
+    document.getElementById(b.dataset.jump).scrollIntoView({ behavior: 'smooth' });
+  });
+  document.querySelectorAll('[data-allergen-toggle]').forEach(btn => btn.onclick = () => {
+    const info = btn.closest('.item').querySelector('.allergen-info');
+    if(info) info.classList.toggle('show');
+  });
   document.getElementById('mgr-link').onclick = async () => {
     location.hash = 'gestion';
     const { data: { session } } = await supabase.auth.getSession();
@@ -299,6 +514,93 @@ function renderLogin(){
 }
 
 // ---------- MANAGER ----------
+// Compact block for EN/ES/DE translations of a text/textarea field set
+function translationsBlock(kind, obj, idAttr, fields){
+  // fields: array of {field, type: 'input'|'textarea', placeholder(lang)=>string}
+  let html = `<details class="translations-block"><summary>🌍 Traductions (${EXTRA_LANGS.map(l=>LANG_LABEL[l]).join(' / ')})</summary>`;
+  EXTRA_LANGS.forEach(l => {
+    html += `<div class="lang-group">
+      <span class="lang-tag">${LANG_LABEL[l]} — à compléter</span>`;
+    fields.forEach(f => {
+      const val = obj[`${f.field}_${l}`] || '';
+      const ph = f.placeholder(l);
+      if(f.type === 'textarea'){
+        html += `<textarea placeholder="${esc(ph)}" data-${kind}field="${f.field}_${l}" data-${idAttr}="${obj.id}">${esc(val)}</textarea>`;
+      } else {
+        html += `<input type="text" class="${f.cls||''}" placeholder="${esc(ph)}" value="${esc(val)}" data-${kind}field="${f.field}_${l}" data-${idAttr}="${obj.id}">`;
+      }
+    });
+    html += `</div>`;
+  });
+  html += `</details>`;
+  return html;
+}
+
+function allergenGrid(it){
+  const checked = it.allergens_list || [];
+  let html = `<div class="allergen-grid" data-allergen-item="${it.id}">`;
+  ALLERGENS_14.forEach(a => {
+    const isChecked = checked.includes(a.code);
+    html += `<label class="allergen-chip ${isChecked?'checked':''}">
+      <input type="checkbox" data-code="${a.code}" ${isChecked?'checked':''}> ${esc(a.fr)}
+    </label>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderCategoryEditor(cat){
+  const badgeClass = cat.kind === 'boisson' ? 'boisson' : '';
+  const badgeLabel = cat.kind === 'boisson' ? 'Boisson' : 'Plat';
+  let html = `<div class="mgr-cat" data-cat="${cat.id}">
+    <div class="mgr-cat-head">
+      <div class="cat-head-left">
+        <span class="drag-handle cat-drag-handle" title="Glisser pour réordonner">⠿</span>
+        <div class="mgr-cat-names">
+          <span class="lang-tag">FR <span class="kind-badge ${badgeClass}">${badgeLabel}</span></span>
+          <input type="text" value="${esc(cat.name_fr)}" data-cat-name-fr="${cat.id}">
+        </div>
+      </div>
+      <button class="btn btn-rust btn-small" data-del-cat="${cat.id}">Supprimer</button>
+    </div>
+    ${translationsBlock('cat', cat, 'cat-id', [
+      { field:'name', type:'input', placeholder:(l)=> l==='en' ? 'Category name (EN)' : `Nom de catégorie (${LANG_LABEL[l]})` }
+    ])}
+    <div class="items-list" id="items-list-${cat.id}" data-cat-id="${cat.id}">`;
+  itemsFor(cat.id).forEach(it => {
+    html += `<div class="mgr-item" data-item="${it.id}">
+      <div class="mgr-item-top">
+        <span class="drag-handle item-drag-handle" title="Glisser pour réordonner">⠿</span>
+        <input type="text" class="field-name" placeholder="Nom (FR)" value="${esc(it.name_fr)}" data-field="name_fr" data-item-id="${it.id}">
+        <input type="text" class="field-price" placeholder="Prix" value="${esc(it.price)}" data-field="price" data-item-id="${it.id}">
+        <select class="field-tag" data-field="tag" data-item-id="${it.id}">
+          ${Object.entries(TAGS).map(([k,v]) => `<option value="${k}" ${it.tag===k?'selected':''}>${v.emoji ? v.emoji+' ' : ''}${v.fr}</option>`).join('')}
+        </select>
+      </div>
+      <textarea placeholder="Description (FR, optionnel)" data-field="desc_fr" data-item-id="${it.id}">${esc(it.desc_fr)}</textarea>
+      <span class="lang-tag">Allergènes — cochez ce qui s'applique</span>
+      ${allergenGrid(it)}
+      <input type="text" placeholder="Précision libre sur les allergènes (optionnel)" value="${esc(it.allergens_fr||'')}" data-field="allergens_fr" data-item-id="${it.id}">
+      ${translationsBlock('item', it, 'item-id', [
+        { field:'name', type:'input', cls:'field-name', placeholder:(l)=> `Nom (${LANG_LABEL[l]})` },
+        { field:'desc', type:'textarea', placeholder:(l)=> `Description (${LANG_LABEL[l]})` },
+        { field:'allergens', type:'input', placeholder:(l)=> `Précision allergènes (${LANG_LABEL[l]})` },
+      ])}
+      <div class="toggle-row">
+        <div class="toggle" data-toggle="${it.id}">
+          <div class="switch ${it.out_of_stock ? 'off' : ''}"></div>
+          <span>${it.out_of_stock ? 'Rupture de stock' : 'Disponible'}</span>
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-rust btn-small" data-del-item="${it.id}">Retirer</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html += `</div><button class="add-item-btn" data-add-item="${cat.id}">+ Ajouter ${cat.kind==='boisson' ? 'une boisson' : 'un plat'}</button></div>`;
+  return html;
+}
+
 function renderManager(){
   let html = `<div class="frame">
     <div class="mgr-header">
@@ -311,49 +613,29 @@ function renderManager(){
     <div class="tabs">
       <div class="tab ${state.editingTab==='menu'?'active':''}" data-tab="menu">Carte</div>
       <div class="tab ${state.editingTab==='formules'?'active':''}" data-tab="formules">Formules</div>
+      <div class="tab ${state.editingTab==='mocktails'?'active':''}" data-tab="mocktails">Mocktails</div>
       <div class="tab ${state.editingTab==='qr'?'active':''}" data-tab="qr">QR code</div>
       <div class="tab ${state.editingTab==='reglages'?'active':''}" data-tab="reglages">Réglages</div>
     </div>`;
 
   if(state.editingTab === 'menu'){
-    state.categories.forEach(cat => {
-      html += `<div class="mgr-cat" data-cat="${cat.id}">
-        <div class="mgr-cat-head">
-          <div class="mgr-cat-names">
-            <span class="lang-tag">FR</span>
-            <input type="text" value="${esc(cat.name_fr)}" data-cat-name-fr="${cat.id}">
-            <span class="lang-tag">EN</span>
-            <input type="text" class="en" placeholder="À compléter…" value="${esc(cat.name_en||'')}" data-cat-name-en="${cat.id}">
-          </div>
-          <button class="btn btn-rust btn-small" data-del-cat="${cat.id}">Supprimer</button>
-        </div>`;
-      itemsFor(cat.id).forEach(it => {
-        html += `<div class="mgr-item" data-item="${it.id}">
-          <span class="lang-tag">FR</span>
-          <div class="mgr-item-top">
-            <input type="text" class="field-name" placeholder="Nom du plat" value="${esc(it.name_fr)}" data-field="name_fr" data-item-id="${it.id}">
-            <input type="text" class="field-price" placeholder="Prix" value="${esc(it.price)}" data-field="price" data-item-id="${it.id}">
-          </div>
-          <textarea placeholder="Description (optionnel)" data-field="desc_fr" data-item-id="${it.id}">${esc(it.desc_fr)}</textarea>
-          <span class="lang-tag">EN — à compléter</span>
-          <input type="text" class="field-name" placeholder="Dish name (English)" value="${esc(it.name_en||'')}" data-field="name_en" data-item-id="${it.id}">
-          <textarea placeholder="Description (English)" data-field="desc_en" data-item-id="${it.id}">${esc(it.desc_en||'')}</textarea>
-          <div class="toggle-row">
-            <div class="toggle" data-toggle="${it.id}">
-              <div class="switch ${it.out_of_stock ? 'off' : ''}"></div>
-              <span>${it.out_of_stock ? 'Rupture de stock' : 'Disponible'}</span>
-            </div>
-            <div class="item-actions">
-              <button class="btn btn-rust btn-small" data-del-item="${it.id}">Retirer</button>
-            </div>
-          </div>
-        </div>`;
-      });
-      html += `<button class="add-item-btn" data-add-item="${cat.id}">+ Ajouter un plat</button></div>`;
-    });
-    html += `<div class="new-cat-row">
-      <input type="text" id="new-cat-input" placeholder="Nouvelle catégorie (ex. Fromages)">
-      <button class="btn btn-gold" id="add-cat-btn">Ajouter</button>
+    html += `<div class="mgr-subhead">🍽 Plats</div>
+      <div class="mgr-hint">Glissez la poignée ⠿ pour réordonner catégories et plats.</div>
+      <div id="food-cats-list">`;
+    foodCats().forEach(cat => { html += renderCategoryEditor(cat); });
+    html += `</div>
+    <div class="new-cat-row">
+      <input type="text" id="new-cat-input-food" placeholder="Nouvelle catégorie de plats (ex. Fromages)">
+      <button class="btn btn-gold" id="add-cat-btn-food">Ajouter</button>
+    </div>`;
+
+    html += `<div class="divider"></div><div class="mgr-subhead">🍹 Boissons</div>
+      <div id="drink-cats-list">`;
+    drinkCats().forEach(cat => { html += renderCategoryEditor(cat); });
+    html += `</div>
+    <div class="new-cat-row">
+      <input type="text" id="new-cat-input-boisson" placeholder="Nouvelle catégorie de boisson (ex. Digestifs)">
+      <button class="btn btn-gold" id="add-cat-btn-boisson">Ajouter</button>
     </div>`;
   }
 
@@ -361,21 +643,22 @@ function renderManager(){
     html += `<div class="mgr-note-block">
       <span class="lang-tag">Note affichée aux clients (FR)</span>
       <textarea id="note-fr" placeholder="ex. Les desserts doivent être commandés en début de repas pour être inclus dans la formule.">${esc(state.settings.formulas_note_fr||'')}</textarea>
-      <span class="lang-tag">EN — à compléter</span>
-      <textarea id="note-en" placeholder="Note in English (optional)">${esc(state.settings.formulas_note_en||'')}</textarea>
+      ${translationsBlock('note', state.settings, 'settings-id', [
+        { field:'formulas_note', type:'textarea', placeholder:(l)=> `Note (${LANG_LABEL[l]}, optionnel)` }
+      ])}
       <button class="btn btn-gold btn-small" id="save-note-btn" style="margin-top:6px;">Enregistrer la note</button>
     </div>
     <div class="divider"></div>`;
 
     state.formulas.forEach(f => {
       html += `<div class="mgr-item" data-formula="${f.id}">
-        <span class="lang-tag">FR</span>
         <div class="mgr-item-top">
-          <input type="text" class="field-name" placeholder="Nom de la formule (ex. Entrée + Plat)" value="${esc(f.name_fr)}" data-ffield="name_fr" data-formula-id="${f.id}">
+          <input type="text" class="field-name" placeholder="Nom de la formule (FR)" value="${esc(f.name_fr)}" data-ffield="name_fr" data-formula-id="${f.id}">
           <input type="text" class="field-price" placeholder="Prix" value="${esc(f.price)}" data-ffield="price" data-formula-id="${f.id}">
         </div>
-        <span class="lang-tag">EN — à compléter</span>
-        <input type="text" class="field-name" placeholder="Set menu name (English)" value="${esc(f.name_en||'')}" data-ffield="name_en" data-formula-id="${f.id}">
+        ${translationsBlock('f', f, 'formula-id', [
+          { field:'name', type:'input', cls:'field-name', placeholder:(l)=> `Nom (${LANG_LABEL[l]})` }
+        ])}
         <div class="toggle-row">
           <span></span>
           <button class="btn btn-rust btn-small" data-del-formula="${f.id}">Retirer</button>
@@ -383,6 +666,38 @@ function renderManager(){
       </div>`;
     });
     html += `<button class="add-item-btn" id="add-formula-btn">+ Ajouter une formule</button>`;
+  }
+
+  if(state.editingTab === 'mocktails'){
+    html += `<div class="mgr-note-block">
+      <span class="lang-tag">Texte d'intro affiché aux clients (FR)</span>
+      <textarea id="mock-intro-fr" placeholder="ex. Créez votre mocktail signature...">${esc(state.settings.mocktail_intro_fr||'')}</textarea>
+      ${translationsBlock('mi', state.settings, 'settings-id', [
+        { field:'mocktail_intro', type:'textarea', placeholder:(l)=> `Intro (${LANG_LABEL[l]}, optionnel)` }
+      ])}
+      <button class="btn btn-gold btn-small" id="save-mock-intro-btn" style="margin-top:6px;">Enregistrer l'intro</button>
+    </div>
+    <div class="divider"></div>`;
+
+    [['sirop','Bases sirop'],['soft','Softs'],['supplement','Suppléments']].forEach(([type, label]) => {
+      html += `<div class="mgr-subhead">${label}</div>`;
+      mocktailOptionsByType(type).forEach(o => {
+        html += `<div class="mgr-item" data-mocktail="${o.id}">
+          <div class="mgr-item-top">
+            <input type="text" class="field-name" placeholder="Nom (FR)" value="${esc(o.name_fr)}" data-mfield="name_fr" data-mocktail-id="${o.id}">
+            ${type==='supplement' ? `<input type="text" class="field-price" placeholder="Prix" value="${esc(o.price)}" data-mfield="price" data-mocktail-id="${o.id}">` : ''}
+          </div>
+          ${translationsBlock('m', o, 'mocktail-id', [
+            { field:'name', type:'input', cls:'field-name', placeholder:(l)=> `Nom (${LANG_LABEL[l]})` }
+          ])}
+          <div class="toggle-row">
+            <span></span>
+            <button class="btn btn-rust btn-small" data-del-mocktail="${o.id}">Retirer</button>
+          </div>
+        </div>`;
+      });
+      html += `<button class="add-item-btn" data-add-mocktail="${type}">+ Ajouter — ${label}</button>`;
+    });
   }
 
   if(state.editingTab === 'qr'){
@@ -395,14 +710,36 @@ function renderManager(){
   }
 
   if(state.editingTab === 'reglages'){
-    html += `<div class="settings-row"><label>Nom du restaurant (FR)</label><input type="text" id="rname-fr" value="${esc(state.settings.name_fr)}"></div>
-      <div class="settings-row"><label>Restaurant name (EN)</label><input type="text" id="rname-en" value="${esc(state.settings.name_en||'')}"></div>
-      <button class="btn btn-gold" id="save-name-btn">Enregistrer</button>`;
+    html += `<div class="settings-row"><label>Nom du restaurant (FR)</label><input type="text" id="rname-fr" value="${esc(state.settings.name_fr)}"></div>`;
+    EXTRA_LANGS.forEach(l => {
+      html += `<div class="settings-row"><label>Nom du restaurant (${LANG_LABEL[l]})</label><input type="text" id="rname-${l}" value="${esc(state.settings[`name_${l}`]||'')}"></div>`;
+    });
+    html += `<button class="btn btn-gold" id="save-name-btn">Enregistrer</button>`;
   }
 
   html += `</div>`;
   app.innerHTML = html;
   bindManagerEvents();
+}
+
+// ---------- Drag & drop reordering ----------
+async function persistOrder(containerId, table, extraFilter){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  const ids = [...container.children].map(child => child.dataset.cat || child.dataset.item);
+  await Promise.all(ids.map((id, idx) => supabase.from(table).update({ sort_order: idx }).eq('id', id)));
+  await loadAll(); render();
+}
+
+function setupSortable(){
+  if(typeof Sortable === 'undefined') return;
+  const foodList = document.getElementById('food-cats-list');
+  if(foodList) new Sortable(foodList, { handle: '.cat-drag-handle', animation:150, onEnd: () => persistOrder('food-cats-list','categories') });
+  const drinkList = document.getElementById('drink-cats-list');
+  if(drinkList) new Sortable(drinkList, { handle: '.cat-drag-handle', animation:150, onEnd: () => persistOrder('drink-cats-list','categories') });
+  document.querySelectorAll('.items-list').forEach(list => {
+    new Sortable(list, { handle: '.item-drag-handle', animation:150, onEnd: () => persistOrder(list.id, 'items') });
+  });
 }
 
 function bindManagerEvents(){
@@ -416,9 +753,9 @@ function bindManagerEvents(){
       if(!checkErr(error, "modification du nom de catégorie")) return;
       await loadAll(); render();
     });
-    document.querySelectorAll('[data-cat-name-en]').forEach(inp => inp.onchange = async () => {
-      const { error } = await supabase.from('categories').update({ name_en: inp.value }).eq('id', inp.dataset.catNameEn);
-      if(!checkErr(error, "modification du nom de catégorie (EN)")) return;
+    document.querySelectorAll('[data-catfield]').forEach(inp => inp.onchange = async () => {
+      const { error } = await supabase.from('categories').update({ [inp.dataset.catfield]: inp.value }).eq('id', inp.dataset.catId);
+      if(!checkErr(error, "modification de la catégorie")) return;
       await loadAll(); render();
     });
     document.querySelectorAll('[data-del-cat]').forEach(btn => btn.onclick = async () => {
@@ -431,6 +768,19 @@ function bindManagerEvents(){
       const { error } = await supabase.from('items').update({ [field.dataset.field]: field.value }).eq('id', field.dataset.itemId);
       if(!checkErr(error, "modification du plat")) return;
       await loadAll(); render();
+    });
+    document.querySelectorAll('[data-itemfield]').forEach(field => field.onchange = async () => {
+      const { error } = await supabase.from('items').update({ [field.dataset.itemfield]: field.value }).eq('id', field.dataset.itemId);
+      if(!checkErr(error, "modification du plat")) return;
+      await loadAll(); render();
+    });
+    document.querySelectorAll('[data-allergen-item]').forEach(container => {
+      container.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = async () => {
+        const codes = [...container.querySelectorAll('input[type=checkbox]:checked')].map(c => c.dataset.code);
+        const { error } = await supabase.from('items').update({ allergens_list: codes }).eq('id', container.dataset.allergenItem);
+        if(!checkErr(error, "modification des allergènes")) return;
+        await loadAll(); render();
+      });
     });
     document.querySelectorAll('[data-toggle]').forEach(tog => tog.onclick = async () => {
       const item = state.items.find(i => i.id === tog.dataset.toggle);
@@ -445,25 +795,37 @@ function bindManagerEvents(){
       await loadAll(); render();
     });
     document.querySelectorAll('[data-add-item]').forEach(btn => btn.onclick = async () => {
-      const { error } = await supabase.from('items').insert({ category_id: btn.dataset.addItem, name_fr: '', price: '' });
+      const maxOrder = Math.max(0, ...itemsFor(btn.dataset.addItem).map(i => i.sort_order||0));
+      const { error } = await supabase.from('items').insert({ category_id: btn.dataset.addItem, name_fr: '', price: '', sort_order: maxOrder + 1 });
       if(!checkErr(error, "ajout d'un plat")) return;
       await loadAll(); render();
     });
-    const addCatBtn = document.getElementById('add-cat-btn');
-    if(addCatBtn) addCatBtn.onclick = async () => {
-      const inp = document.getElementById('new-cat-input');
+    const addCatBtnFood = document.getElementById('add-cat-btn-food');
+    if(addCatBtnFood) addCatBtnFood.onclick = async () => {
+      const inp = document.getElementById('new-cat-input-food');
       if(!inp.value.trim()) return;
-      const { error } = await supabase.from('categories').insert({ name_fr: inp.value.trim() });
+      const maxOrder = Math.max(0, ...foodCats().map(c => c.sort_order||0));
+      const { error } = await supabase.from('categories').insert({ name_fr: inp.value.trim(), kind: 'food', sort_order: maxOrder + 1 });
       if(!checkErr(error, "ajout d'une catégorie")) return;
       await loadAll(); render();
     };
+    const addCatBtnBoisson = document.getElementById('add-cat-btn-boisson');
+    if(addCatBtnBoisson) addCatBtnBoisson.onclick = async () => {
+      const inp = document.getElementById('new-cat-input-boisson');
+      if(!inp.value.trim()) return;
+      const maxOrder = Math.max(0, ...drinkCats().map(c => c.sort_order||0));
+      const { error } = await supabase.from('categories').insert({ name_fr: inp.value.trim(), kind: 'boisson', sort_order: maxOrder + 1 });
+      if(!checkErr(error, "ajout d'une catégorie")) return;
+      await loadAll(); render();
+    };
+    setupSortable();
   }
 
   if(state.editingTab === 'formules'){
     document.getElementById('save-note-btn').onclick = async () => {
-      const formulas_note_fr = document.getElementById('note-fr').value;
-      const formulas_note_en = document.getElementById('note-en').value;
-      const { error } = await supabase.from('restaurant_settings').update({ formulas_note_fr, formulas_note_en }).eq('id', 1);
+      const payload = { formulas_note_fr: document.getElementById('note-fr').value };
+      document.querySelectorAll('[data-notefield]').forEach(el => { payload[el.dataset.notefield] = el.value; });
+      const { error } = await supabase.from('restaurant_settings').update(payload).eq('id', 1);
       if(!checkErr(error, "enregistrement de la note")) return;
       await loadAll(); render();
       showToast('Note enregistrée.');
@@ -480,10 +842,38 @@ function bindManagerEvents(){
     });
     const addFormulaBtn = document.getElementById('add-formula-btn');
     if(addFormulaBtn) addFormulaBtn.onclick = async () => {
-      const { error } = await supabase.from('formulas').insert({ name_fr: '', price: '' });
+      const maxOrder = Math.max(0, ...state.formulas.map(f => f.sort_order||0));
+      const { error } = await supabase.from('formulas').insert({ name_fr: '', price: '', sort_order: maxOrder + 1 });
       if(!checkErr(error, "ajout d'une formule")) return;
       await loadAll(); render();
     };
+  }
+
+  if(state.editingTab === 'mocktails'){
+    document.getElementById('save-mock-intro-btn').onclick = async () => {
+      const payload = { mocktail_intro_fr: document.getElementById('mock-intro-fr').value };
+      document.querySelectorAll('[data-mifield]').forEach(el => { payload[el.dataset.mifield] = el.value; });
+      const { error } = await supabase.from('restaurant_settings').update(payload).eq('id', 1);
+      if(!checkErr(error, "enregistrement de l'intro")) return;
+      await loadAll(); render();
+      showToast('Intro enregistrée.');
+    };
+    document.querySelectorAll('[data-mfield]').forEach(field => field.onchange = async () => {
+      const { error } = await supabase.from('mocktail_options').update({ [field.dataset.mfield]: field.value }).eq('id', field.dataset.mocktailId);
+      if(!checkErr(error, "modification de l'option")) return;
+      await loadAll(); render();
+    });
+    document.querySelectorAll('[data-del-mocktail]').forEach(btn => btn.onclick = async () => {
+      const { error } = await supabase.from('mocktail_options').delete().eq('id', btn.dataset.delMocktail);
+      if(!checkErr(error, "suppression de l'option")) return;
+      await loadAll(); render();
+    });
+    document.querySelectorAll('[data-add-mocktail]').forEach(btn => btn.onclick = async () => {
+      const maxOrder = Math.max(0, ...mocktailOptionsByType(btn.dataset.addMocktail).map(o => o.sort_order||0));
+      const { error } = await supabase.from('mocktail_options').insert({ type: btn.dataset.addMocktail, name_fr: '', price: '', sort_order: maxOrder + 1 });
+      if(!checkErr(error, "ajout d'une option")) return;
+      await loadAll(); render();
+    });
   }
 
   if(state.editingTab === 'qr'){
@@ -494,9 +884,9 @@ function bindManagerEvents(){
 
   if(state.editingTab === 'reglages'){
     document.getElementById('save-name-btn').onclick = async () => {
-      const name_fr = document.getElementById('rname-fr').value.trim() || 'Votre Restaurant';
-      const name_en = document.getElementById('rname-en').value.trim();
-      await supabase.from('restaurant_settings').update({ name_fr, name_en }).eq('id', 1);
+      const payload = { name_fr: document.getElementById('rname-fr').value.trim() || 'Votre Restaurant' };
+      EXTRA_LANGS.forEach(l => { payload[`name_${l}`] = document.getElementById(`rname-${l}`).value.trim(); });
+      await supabase.from('restaurant_settings').update(payload).eq('id', 1);
       await loadAll(); render();
       showToast('Nom mis à jour.');
     };
@@ -510,6 +900,7 @@ function subscribeRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, async () => { await loadAll(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_settings' }, async () => { await loadAll(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'formulas' }, async () => { await loadAll(); render(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'mocktail_options' }, async () => { await loadAll(); render(); })
     .subscribe();
 }
 
@@ -533,5 +924,6 @@ window.addEventListener('hashchange', async () => {
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 </body>
 </html>
