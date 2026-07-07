@@ -316,32 +316,6 @@
   .ks-minus{ border-right:2px solid #111; }
   .ks-plus{ border-left:2px solid #111; }
   .ks-adj:active{ background:#ddd; }
-
-  /* Service screen — same plain black & white, practical style as Stock cuisine */
-  .service-screen{ background:#fff; color:#111; min-height:100vh; padding:20px; font-family:Arial, Helvetica, sans-serif; }
-  .svc-empty{ color:#555; padding:16px 4px; font-size:0.95rem; }
-  .svc-date-row{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
-  .svc-date-row label{ font-weight:700; font-size:0.9rem; }
-  .svc-date-row input{ border:2px solid #111; border-radius:6px; padding:8px 10px; font-size:0.95rem; font-family:Arial, Helvetica, sans-serif; }
-  .svc-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; border:2px solid #111; border-radius:10px; padding:12px 14px; margin-bottom:10px; }
-  .svc-row-main{ font-size:0.95rem; font-weight:600; }
-  .svc-resa{ border:2px solid #111; border-radius:10px; padding:14px; margin-bottom:12px; }
-  .svc-resa-head{ display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; margin-bottom:4px; }
-  .svc-resa-time{ font-size:1.15rem; font-weight:800; }
-  .svc-resa-name{ font-size:0.95rem; font-weight:600; }
-  .svc-resa-sub{ color:#555; font-size:0.85rem; margin-bottom:10px; }
-  .svc-resa-row2{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
-  .svc-input{ border:2px solid #111; border-radius:6px; padding:9px 10px; font-size:0.9rem; font-family:Arial, Helvetica, sans-serif; width:110px; }
-  .svc-arrival{ font-size:0.88rem; font-weight:700; }
-  .svc-resa-actions{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
-  .svc-btn-danger{ border-color:#b3492f; color:#b3492f; }
-  .svc-details{ border:2px solid #111; border-radius:10px; padding:0 14px 14px; margin-top:14px; }
-  .svc-details summary{ cursor:pointer; padding:12px 0; font-weight:700; font-size:0.95rem; list-style:none; }
-  .svc-details summary::-webkit-details-marker{ display:none; }
-  .svc-new-form{ display:flex; flex-direction:column; gap:10px; }
-  .svc-field label{ display:block; font-size:0.8rem; font-weight:700; margin-bottom:3px; }
-  .svc-field input, .svc-field select{ width:100%; border:2px solid #111; border-radius:6px; padding:9px 10px; font-size:0.9rem; font-family:Arial, Helvetica, sans-serif; }
-  .svc-history-row{ color:#666; font-size:0.85rem; padding:4px 0; }
 </style>
 </head>
 <body>
@@ -356,7 +330,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ⚠️ Remplacez cette valeur par la clé publique VAPID générée pendant l'installation
 // des notifications push (voir INSTRUCTIONS-push-notifications.md). Tant qu'elle
 // vaut 'REPLACE_ME', le bouton d'activation des alertes reste désactivé.
-const VAPID_PUBLIC_KEY = 'BCUzxw8slf7YDp5fsr-xNjFMgs4RkiV8kBgc5BpRPc_OvcDTcrWaXAV-R4ycaHJQG4ZGakzfzwm-B14YnZFWyZo';
+const VAPID_PUBLIC_KEY = 'REPLACE_ME';
 
 function urlBase64ToUint8Array(base64String){
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -569,6 +543,10 @@ function mocktailOptionsByType(type){ return state.mocktailOptions.filter(o => o
 // l'affiche clairement (au lieu de l'ignorer silencieusement) et renvoie false.
 function checkErr(error, contexte){
   if(error){
+    if((error.message||'').includes('CAPACITY_FULL')){
+      showToast(`Ce créneau est complet (${state.settings.reservation_max_covers||5} couverts max). Choisissez un autre horaire.`);
+      return false;
+    }
     console.error(`Erreur Supabase (${contexte}) :`, error);
     showToast(`Échec — ${contexte} : ${error.message}`);
     return false;
@@ -583,6 +561,7 @@ function render(){
   if(state.view === 'manager') return renderManager();
   if(state.view === 'kitchen') return renderKitchen();
   if(state.view === 'service') return renderService();
+  if(state.view === 'reception') return renderReception();
   if(state.view === 'reservation') return renderReservationPublic();
 }
 
@@ -628,6 +607,7 @@ function renderReservationPublic(){
       <div class="settings-row"><label>Nom</label><input type="text" id="resa-name" required></div>
       <div class="settings-row"><label>Téléphone</label><input type="tel" id="resa-phone" required></div>
       <div class="settings-row"><label>Numéro de chambre (si vous êtes client de l'hôtel)</label><input type="text" id="resa-room" placeholder="Optionnel"></div>
+      <div class="settings-row"><label>Informations complémentaires</label><input type="text" id="resa-notes" placeholder="Allergie, anniversaire... (optionnel)"></div>
       <div class="login-error" id="resa-err"></div>
       <button type="submit" class="btn btn-gold" id="resa-submit" style="width:100%;">Réserver</button>
     </form>`;
@@ -651,6 +631,7 @@ function renderReservationPublic(){
       name: document.getElementById('resa-name').value.trim(),
       phone: document.getElementById('resa-phone').value.trim(),
       room_number: document.getElementById('resa-room').value.trim(),
+      notes: document.getElementById('resa-notes').value.trim(),
     };
     if(!payload.name || !payload.phone){
       document.getElementById('resa-err').textContent = 'Merci de renseigner votre nom et votre téléphone.';
@@ -660,7 +641,13 @@ function renderReservationPublic(){
     submitBtn.disabled = true;
     const { error } = await supabase.from('reservations').insert(payload);
     submitBtn.disabled = false;
-    if(error){ document.getElementById('resa-err').textContent = "Une erreur est survenue, merci de réessayer ou d'appeler l'établissement."; console.error(error); return; }
+    if(error){
+      document.getElementById('resa-err').textContent = (error.message||'').includes('CAPACITY_FULL')
+        ? `Ce créneau est complet. Merci de choisir un autre horaire ou d'appeler l'établissement.`
+        : "Une erreur est survenue, merci de réessayer ou d'appeler l'établissement.";
+      console.error(error);
+      return;
+    }
     state.reservationDone = true;
     render();
   };
@@ -807,6 +794,34 @@ function elapsedMins(arrivedAt){
   return Math.max(0, Math.round((Date.now() - new Date(arrivedAt).getTime()) / 60000));
 }
 
+// ---------- Notification client (SMS pré-rempli, sans service payant) ----------
+function buildThankYouMessage(r){
+  const d = new Date(r.reservation_date + 'T00:00:00');
+  const dateStr = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+  let msg = `Merci pour votre réservation ${r.name} ! Nous vous attendons ${dateStr} à ${r.time_slot} pour ${r.covers} couvert${r.covers>1?'s':''}`;
+  if(r.table_label) msg += ` (table ${r.table_label})`;
+  msg += `.`;
+  if(r.notes) msg += ` ${r.notes}.`;
+  msg += ` À bientôt !`;
+  return msg;
+}
+
+async function notifyReservation(r){
+  if(!r.phone){ showToast('Aucun numéro de téléphone pour cette réservation.'); return; }
+  const msg = buildThankYouMessage(r);
+  const phone = r.phone.replace(/\s+/g,'');
+  window.open(`sms:${phone}?body=${encodeURIComponent(msg)}`, '_blank');
+  await supabase.from('reservations').update({ notified_at: new Date().toISOString() }).eq('id', r.id);
+  await loadReservations(state.serviceDate);
+}
+
+async function copyThankYouMessage(r){
+  try{
+    await navigator.clipboard.writeText(buildThankYouMessage(r));
+    showToast('Message copié — collez-le dans SMS ou WhatsApp.');
+  }catch(e){ showToast("Impossible de copier automatiquement."); }
+}
+
 function renderService(){
   clearInterval(serviceRefreshTimer);
   serviceRefreshTimer = setInterval(() => { if(state.view === 'service') render(); }, 30000);
@@ -816,76 +831,84 @@ function renderService(){
     .sort((a,b) => a.time_slot.localeCompare(b.time_slot));
   const history = state.reservations.filter(r => r.status === 'terminee' || r.status === 'annulee');
   const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
-  const timeFmt = (iso) => new Date(iso).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
 
-  let html = `<div class="service-screen">
-    <div class="ks-header">
-      <button class="ks-btn" id="svc-back">← Retour</button>
-      <div class="ks-title">Service</div>
-      <button class="ks-btn" id="svc-enable-push">Activer les alertes</button>
+  let html = `<div class="frame mgr-frame">
+    <div class="mgr-header">
+      <div class="mgr-title">🛎 Service</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn btn-small" id="svc-enable-push">🔔 Activer les alertes</button>
+        <button class="btn btn-small" id="svc-back">← Retour</button>
+      </div>
     </div>
 
-    <div class="ks-cat-title">Appels en attente ${pending.length ? `(${pending.length})` : ''}</div>`;
+    <div class="mgr-subhead">🔔 Appels en attente ${pending.length ? `<span class="tab-badge">${pending.length}</span>` : ''}</div>`;
 
   if(pending.length === 0){
-    html += `<div class="svc-empty">Aucun appel en attente.</div>`;
+    html += `<div class="empty-note">Aucun appel en attente.</div>`;
   } else {
     pending.forEach(c => {
       const mins = Math.max(0, Math.round((Date.now() - new Date(c.created_at).getTime())/60000));
-      html += `<div class="svc-row">
-        <div class="svc-row-main">${c.table_label ? `Table ${esc(c.table_label)}` : 'Table non précisée'} — il y a ${mins} min</div>
-        <button class="ks-btn" data-svc-done-call="${c.id}">Traité</button>
+      html += `<div class="mgr-item call-row">
+        <div class="toggle-row">
+          <span>${c.table_label ? `Table <strong>${esc(c.table_label)}</strong>` : 'Table non précisée'} — il y a ${mins} min</span>
+          <button class="btn btn-gold btn-small" data-svc-done-call="${c.id}">✓ Traité</button>
+        </div>
       </div>`;
     });
   }
 
-  html += `<div class="ks-cat-title">Réservations</div>
-    <div class="svc-date-row"><label>Date</label><input type="date" id="svc-date" value="${state.serviceDate}"></div>`;
+  html += `<div class="divider"></div>
+    <div class="mgr-subhead">📅 Réservations</div>
+    <div class="settings-row"><label>Date</label><input type="date" id="svc-date" value="${state.serviceDate}"></div>`;
 
   if(active.length === 0){
-    html += `<div class="svc-empty">Aucune réservation active pour cette date.</div>`;
+    html += `<div class="empty-note">Aucune réservation active pour cette date.</div>`;
   } else {
     active.forEach(r => {
       const isArrived = r.status === 'arrivee';
-      html += `<div class="svc-resa">
-        <div class="svc-resa-head">
-          <span class="svc-resa-time">${esc(r.time_slot)}</span>
-          <span class="svc-resa-name">${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
+      html += `<div class="mgr-item resa-row">
+        <div class="mgr-item-top" style="flex-wrap:wrap;">
+          <strong>${esc(r.time_slot)}</strong>
+          <span class="mgr-item-summary">${r.vip ? '⭐ ' : ''}${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
         </div>
-        <div class="svc-resa-sub">Tél. ${esc(r.phone)}</div>
-        <div class="svc-resa-row2">
-          <input type="text" class="svc-input" placeholder="Table" value="${esc(r.table_label||'')}" data-resa-table="${r.id}">
+        <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone)}${r.notes ? ` — 📝 ${esc(r.notes)}` : ''}</div>
+        <div class="mgr-item-top">
+          <input type="text" class="field-name" placeholder="Table" value="${esc(r.table_label||'')}" data-resa-table="${r.id}">
           ${isArrived
-            ? `<span class="svc-arrival">Prévu ${esc(r.time_slot)} · Arrivé ${timeFmt(r.arrived_at)} · ${elapsedMins(r.arrived_at)} min</span>`
-            : `<button class="ks-btn" data-resa-arrive="${r.id}">Marquer arrivé</button>`}
+            ? `<span class="resa-timer">⏱ ${elapsedMins(r.arrived_at)} min</span>`
+            : `<button class="btn btn-gold btn-small" data-resa-arrive="${r.id}">✓ Arrivé</button>`}
         </div>
-        <div class="svc-resa-actions">
-          ${isArrived ? `<button class="ks-btn" data-resa-done="${r.id}">Terminé / table libérée</button>` : `<span></span>`}
-          <button class="ks-btn svc-btn-danger" data-resa-cancel="${r.id}">Annuler</button>
+        <div class="toggle-row">
+          ${r.phone ? `<div style="display:flex; gap:6px;">
+            <button class="btn btn-small" data-resa-notify="${r.id}">💬 Notifier${r.notified_at ? ' ✓' : ''}</button>
+            <button class="btn btn-small" data-resa-copy="${r.id}">📋</button>
+          </div>` : `<span></span>`}
+          ${isArrived ? `<button class="btn btn-small" data-resa-done="${r.id}">Terminé / Table libérée</button>` : ``}
+          <button class="btn btn-rust btn-small" data-resa-cancel="${r.id}">✕ Annuler</button>
         </div>
       </div>`;
     });
   }
 
-  html += `<details class="svc-details">
+  html += `<details class="translations-block" style="margin-top:12px;">
     <summary>+ Nouvelle réservation</summary>
-    <div class="svc-new-form">
-      <div class="svc-field"><label>Créneau horaire</label>
+    <div class="lang-group">
+      <div class="settings-row"><label>Créneau horaire</label>
         <select id="svc-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
       </div>
-      <div class="svc-field"><label>Nombre de couverts</label><input type="number" id="svc-new-covers" min="1" value="2"></div>
-      <div class="svc-field"><label>Nom</label><input type="text" id="svc-new-name"></div>
-      <div class="svc-field"><label>Téléphone</label><input type="tel" id="svc-new-phone"></div>
-      <div class="svc-field"><label>Numéro de chambre (optionnel)</label><input type="text" id="svc-new-room"></div>
-      <button class="ks-btn" id="svc-new-submit">Ajouter la réservation</button>
+      <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="svc-new-covers" min="1" value="2"></div>
+      <div class="settings-row"><label>Nom</label><input type="text" id="svc-new-name"></div>
+      <div class="settings-row"><label>Téléphone</label><input type="tel" id="svc-new-phone"></div>
+      <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="svc-new-room"></div>
+      <button class="btn btn-gold btn-small" id="svc-new-submit">Ajouter la réservation</button>
     </div>
   </details>`;
 
   if(history.length > 0){
-    html += `<details class="svc-details">
+    html += `<details class="translations-block" style="margin-top:12px;">
       <summary>Historique du jour (${history.length})</summary>`;
     history.sort((a,b)=> a.time_slot.localeCompare(b.time_slot)).forEach(r => {
-      html += `<div class="svc-history-row">${esc(r.time_slot)} — ${esc(r.name)} — ${r.status === 'annulee' ? 'Annulée' : 'Terminée'}</div>`;
+      html += `<div class="lang-group" style="opacity:0.65; font-size:0.82rem;">${esc(r.time_slot)} — ${esc(r.name)} — ${r.status === 'annulee' ? 'Annulée' : 'Terminée'}</div>`;
     });
     html += `</details>`;
   }
@@ -926,6 +949,15 @@ function renderService(){
     if(!checkErr(error, "annulation de la réservation")) return;
     await loadReservations(state.serviceDate); render();
   });
+  document.querySelectorAll('[data-resa-notify]').forEach(btn => btn.onclick = async () => {
+    const r = state.reservations.find(x => x.id === btn.dataset.resaNotify);
+    if(r) await notifyReservation(r);
+    render();
+  });
+  document.querySelectorAll('[data-resa-copy]').forEach(btn => btn.onclick = () => {
+    const r = state.reservations.find(x => x.id === btn.dataset.resaCopy);
+    if(r) copyThankYouMessage(r);
+  });
   document.getElementById('svc-new-submit').onclick = async () => {
     const payload = {
       reservation_date: state.serviceDate,
@@ -934,6 +966,161 @@ function renderService(){
       name: document.getElementById('svc-new-name').value.trim(),
       phone: document.getElementById('svc-new-phone').value.trim(),
       room_number: document.getElementById('svc-new-room').value.trim(),
+    };
+    if(!payload.name){ showToast('Merci de renseigner un nom.'); return; }
+    const { error } = await supabase.from('reservations').insert(payload);
+    if(!checkErr(error, "ajout de la réservation")) return;
+    await loadReservations(state.serviceDate); render();
+    showToast('Réservation ajoutée.');
+  };
+}
+
+// ---------- RÉCEPTION (vue d'ensemble des créneaux, VIP, préauto) ----------
+const PREAUTH_LABELS = { true: '✅ Préauto autorisée', false: '🚫 Préauto refusée', null: '❔ Préauto non définie' };
+
+function renderReception(){
+  const maxCap = state.settings.reservation_max_covers || 5;
+  const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
+  const byStatus = s => state.reservations.filter(r => r.status !== 'annulee' && r.time_slot === s).sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  const cancelled = state.reservations.filter(r => r.status === 'annulee');
+
+  let html = `<div class="frame mgr-frame">
+    <div class="mgr-header">
+      <div class="mgr-title">📖 Réception</div>
+      <button class="btn btn-small" id="rcp-back">← Retour</button>
+    </div>
+    <div class="settings-row"><label>Date</label><input type="date" id="rcp-date" value="${state.serviceDate}"></div>`;
+
+  slots.forEach(s => {
+    const resas = byStatus(s);
+    const sum = resas.reduce((a,r)=>a+r.covers,0);
+    const full = sum >= maxCap;
+    html += `<div class="mgr-cat">
+      <div class="mgr-cat-head">
+        <strong>${esc(s)}</strong>
+        <span class="kind-badge ${full ? 'boisson' : ''}">${sum}/${maxCap} couverts</span>
+      </div>`;
+    if(resas.length === 0){
+      html += `<div class="mgr-hint" style="margin:0;">Aucune réservation sur ce créneau.</div>`;
+    } else {
+      resas.forEach(r => {
+        html += `<div class="mgr-item" data-rcp-item="${r.id}">
+          <div class="mgr-item-top" style="flex-wrap:wrap;">
+            <span class="mgr-item-summary">${r.vip ? '⭐ ' : ''}${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
+          </div>
+          <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone||'—')} ${r.status==='arrivee' ? '— 🟢 Arrivé' : r.status==='terminee' ? '— ⚪ Terminé' : ''}</div>
+          <div class="mgr-item-top">
+            <label class="toggle" style="flex:1;"><input type="checkbox" data-rcp-vip="${r.id}" ${r.vip?'checked':''} style="width:auto;"> VIP</label>
+            <select data-rcp-preauth="${r.id}" style="flex:2;">
+              <option value="null" ${r.preauth_allowed===null?'selected':''}>❔ Préauto non définie</option>
+              <option value="true" ${r.preauth_allowed===true?'selected':''}>✅ Préauto autorisée</option>
+              <option value="false" ${r.preauth_allowed===false?'selected':''}>🚫 Préauto refusée</option>
+            </select>
+          </div>
+          <input type="text" placeholder="Table (si pré-attribuée)" value="${esc(r.table_label||'')}" data-rcp-table="${r.id}">
+          <textarea placeholder="Notes / commentaires (ex. anniversaire, allergie...)" data-rcp-notes="${r.id}">${esc(r.notes||'')}</textarea>
+          <div class="toggle-row">
+            ${r.phone ? `<div style="display:flex; gap:6px;">
+              <button class="btn btn-small" data-rcp-notify="${r.id}">💬 Notifier${r.notified_at ? ' ✓' : ''}</button>
+              <button class="btn btn-small" data-rcp-copy="${r.id}">📋</button>
+            </div>` : `<span></span>`}
+            <button class="btn btn-rust btn-small" data-rcp-cancel="${r.id}">✕ Annuler</button>
+          </div>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+  });
+
+  html += `<details class="translations-block">
+    <summary>+ Nouvelle réservation</summary>
+    <div class="lang-group">
+      <div class="settings-row"><label>Créneau horaire</label>
+        <select id="rcp-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+      </div>
+      <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="rcp-new-covers" min="1" value="2"></div>
+      <div class="settings-row"><label>Nom</label><input type="text" id="rcp-new-name"></div>
+      <div class="settings-row"><label>Téléphone</label><input type="tel" id="rcp-new-phone"></div>
+      <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="rcp-new-room"></div>
+      <div class="settings-row"><label>Notes / commentaires</label><input type="text" id="rcp-new-notes" placeholder="ex. VIP, anniversaire, allergie..."></div>
+      <div class="mgr-item-top">
+        <label class="toggle" style="flex:1;"><input type="checkbox" id="rcp-new-vip" style="width:auto;"> VIP</label>
+        <select id="rcp-new-preauth" style="flex:2;">
+          <option value="null">❔ Préauto non définie</option>
+          <option value="true">✅ Préauto autorisée</option>
+          <option value="false">🚫 Préauto refusée</option>
+        </select>
+      </div>
+      <button class="btn btn-gold btn-small" id="rcp-new-submit" style="margin-top:8px;">Ajouter la réservation</button>
+    </div>
+  </details>`;
+
+  if(cancelled.length > 0){
+    html += `<details class="translations-block" style="margin-top:12px;">
+      <summary>Annulées (${cancelled.length})</summary>`;
+    cancelled.sort((a,b)=> a.time_slot.localeCompare(b.time_slot)).forEach(r => {
+      html += `<div class="lang-group" style="opacity:0.6; font-size:0.82rem;">${esc(r.time_slot)} — ${esc(r.name)} — ${r.covers} couverts</div>`;
+    });
+    html += `</details>`;
+  }
+
+  html += `</div>`;
+  app.innerHTML = html;
+
+  document.getElementById('rcp-back').onclick = () => { state.view = 'manager'; render(); };
+  document.getElementById('rcp-date').onchange = async (e) => {
+    state.serviceDate = e.target.value;
+    await loadReservations(state.serviceDate);
+    render();
+  };
+  document.querySelectorAll('[data-rcp-vip]').forEach(cb => cb.onchange = async () => {
+    const { error } = await supabase.from('reservations').update({ vip: cb.checked }).eq('id', cb.dataset.rcpVip);
+    if(!checkErr(error, "mise à jour VIP")) return;
+    await loadReservations(state.serviceDate); render();
+  });
+  document.querySelectorAll('[data-rcp-preauth]').forEach(sel => sel.onchange = async () => {
+    const val = sel.value === 'null' ? null : sel.value === 'true';
+    const { error } = await supabase.from('reservations').update({ preauth_allowed: val }).eq('id', sel.dataset.rcpPreauth);
+    if(!checkErr(error, "mise à jour préauto")) return;
+    await loadReservations(state.serviceDate); render();
+  });
+  document.querySelectorAll('[data-rcp-table]').forEach(inp => inp.onchange = async () => {
+    const { error } = await supabase.from('reservations').update({ table_label: inp.value.trim() }).eq('id', inp.dataset.rcpTable);
+    if(!checkErr(error, "attribution de la table")) return;
+    await loadReservations(state.serviceDate); render();
+  });
+  document.querySelectorAll('[data-rcp-notes]').forEach(ta => ta.onchange = async () => {
+    const { error } = await supabase.from('reservations').update({ notes: ta.value }).eq('id', ta.dataset.rcpNotes);
+    if(!checkErr(error, "mise à jour des notes")) return;
+    await loadReservations(state.serviceDate); render();
+  });
+  document.querySelectorAll('[data-rcp-notify]').forEach(btn => btn.onclick = async () => {
+    const r = state.reservations.find(x => x.id === btn.dataset.rcpNotify);
+    if(r) await notifyReservation(r);
+    render();
+  });
+  document.querySelectorAll('[data-rcp-copy]').forEach(btn => btn.onclick = () => {
+    const r = state.reservations.find(x => x.id === btn.dataset.rcpCopy);
+    if(r) copyThankYouMessage(r);
+  });
+  document.querySelectorAll('[data-rcp-cancel]').forEach(btn => btn.onclick = async () => {
+    if(!confirm('Annuler cette réservation ?')) return;
+    const { error } = await supabase.from('reservations').update({ status: 'annulee' }).eq('id', btn.dataset.rcpCancel);
+    if(!checkErr(error, "annulation de la réservation")) return;
+    await loadReservations(state.serviceDate); render();
+  });
+  document.getElementById('rcp-new-submit').onclick = async () => {
+    const preauthSel = document.getElementById('rcp-new-preauth').value;
+    const payload = {
+      reservation_date: state.serviceDate,
+      time_slot: document.getElementById('rcp-new-slot').value,
+      covers: parseInt(document.getElementById('rcp-new-covers').value, 10) || 1,
+      name: document.getElementById('rcp-new-name').value.trim(),
+      phone: document.getElementById('rcp-new-phone').value.trim(),
+      room_number: document.getElementById('rcp-new-room').value.trim(),
+      notes: document.getElementById('rcp-new-notes').value.trim(),
+      vip: document.getElementById('rcp-new-vip').checked,
+      preauth_allowed: preauthSel === 'null' ? null : preauthSel === 'true',
     };
     if(!payload.name){ showToast('Merci de renseigner un nom.'); return; }
     const { error } = await supabase.from('reservations').insert(payload);
@@ -1267,6 +1454,7 @@ function renderManager(){
     <div class="mgr-header">
       <div class="mgr-title">Gestion de la carte</div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn btn-small" id="reception-btn">📖 Réception</button>
         <button class="btn btn-small" id="kitchen-btn">📦 Stock cuisine</button>
         <button class="btn btn-small" id="service-btn">🛎 Service</button>
         <button class="btn btn-small" id="exit-btn">Voir la carte</button>
@@ -1424,10 +1612,10 @@ function renderManager(){
         <div class="field-block"><span class="lang-tag">Début</span><input type="time" id="resa-start" value="${esc(state.settings.reservation_start||'18:00')}"></div>
         <div class="field-block"><span class="lang-tag">Fin</span><input type="time" id="resa-end" value="${esc(state.settings.reservation_end||'21:00')}"></div>
         <div class="field-block"><span class="lang-tag">Intervalle (min)</span><input type="number" id="resa-slot-min" min="5" step="5" value="${state.settings.reservation_slot_minutes||15}"></div>
+        <div class="field-block"><span class="lang-tag">Couverts max / créneau</span><input type="number" id="resa-max-covers" min="1" value="${state.settings.reservation_max_covers||5}"></div>
       </div>
       <button class="btn btn-gold btn-small" id="save-resa-settings-btn" style="margin-top:6px;">Enregistrer les créneaux</button>
-      <p class="mgr-hint">Page de réservation à donner à la réception :</p>
-      <div class="link-row"><input type="text" readonly value="${esc(location.origin + location.pathname)}#reservation" id="resa-link-field"><button class="btn btn-small" id="copy-resa-link">Copier</button></div>
+      <p class="mgr-hint">Page de réservation à donner à la réception : <strong>${esc(location.origin + location.pathname)}#reservation</strong></p>
     </div>`;
   }
 
@@ -1458,6 +1646,11 @@ function setupSortable(){
 
 function bindManagerEvents(){
   document.getElementById('exit-btn').onclick = () => { location.hash=''; state.view='menu'; render(); };
+  document.getElementById('reception-btn').onclick = async () => {
+    await loadReservations(state.serviceDate);
+    state.view = 'reception';
+    render();
+  };
   document.getElementById('kitchen-btn').onclick = () => { state.view = 'kitchen'; render(); };
   document.getElementById('service-btn').onclick = async () => {
     await Promise.all([loadServerCalls(), loadReservations(state.serviceDate)]);
@@ -1661,15 +1854,12 @@ function bindManagerEvents(){
         reservation_start: document.getElementById('resa-start').value || '18:00',
         reservation_end: document.getElementById('resa-end').value || '21:00',
         reservation_slot_minutes: parseInt(document.getElementById('resa-slot-min').value, 10) || 15,
+        reservation_max_covers: parseInt(document.getElementById('resa-max-covers').value, 10) || 5,
       };
       const { error } = await supabase.from('restaurant_settings').update(payload).eq('id', 1);
       if(!checkErr(error, "enregistrement des créneaux")) return;
       await loadAll(); render();
       showToast('Créneaux enregistrés.');
-    };
-    document.getElementById('copy-resa-link').onclick = () => {
-      const link = document.getElementById('resa-link-field').value;
-      navigator.clipboard.writeText(link).then(() => showToast('Lien copié !'));
     };
   }
 }
@@ -1686,7 +1876,7 @@ function subscribeRealtime(){
       if(state.view === 'manager' || state.view === 'service'){ await loadServerCalls(); render(); }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, async () => {
-      if(state.view === 'service'){ await loadReservations(state.serviceDate); render(); }
+      if(state.view === 'service' || state.view === 'reception'){ await loadReservations(state.serviceDate); render(); }
     })
     .subscribe();
 }
