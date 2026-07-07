@@ -316,6 +316,32 @@
   .ks-minus{ border-right:2px solid #111; }
   .ks-plus{ border-left:2px solid #111; }
   .ks-adj:active{ background:#ddd; }
+
+  /* Service screen — same plain black & white, practical style as Stock cuisine */
+  .service-screen{ background:#fff; color:#111; min-height:100vh; padding:20px; font-family:Arial, Helvetica, sans-serif; }
+  .svc-empty{ color:#555; padding:16px 4px; font-size:0.95rem; }
+  .svc-date-row{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .svc-date-row label{ font-weight:700; font-size:0.9rem; }
+  .svc-date-row input{ border:2px solid #111; border-radius:6px; padding:8px 10px; font-size:0.95rem; font-family:Arial, Helvetica, sans-serif; }
+  .svc-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; border:2px solid #111; border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+  .svc-row-main{ font-size:0.95rem; font-weight:600; }
+  .svc-resa{ border:2px solid #111; border-radius:10px; padding:14px; margin-bottom:12px; }
+  .svc-resa-head{ display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; margin-bottom:4px; }
+  .svc-resa-time{ font-size:1.15rem; font-weight:800; }
+  .svc-resa-name{ font-size:0.95rem; font-weight:600; }
+  .svc-resa-sub{ color:#555; font-size:0.85rem; margin-bottom:10px; }
+  .svc-resa-row2{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .svc-input{ border:2px solid #111; border-radius:6px; padding:9px 10px; font-size:0.9rem; font-family:Arial, Helvetica, sans-serif; width:110px; }
+  .svc-arrival{ font-size:0.88rem; font-weight:700; }
+  .svc-resa-actions{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .svc-btn-danger{ border-color:#b3492f; color:#b3492f; }
+  .svc-details{ border:2px solid #111; border-radius:10px; padding:0 14px 14px; margin-top:14px; }
+  .svc-details summary{ cursor:pointer; padding:12px 0; font-weight:700; font-size:0.95rem; list-style:none; }
+  .svc-details summary::-webkit-details-marker{ display:none; }
+  .svc-new-form{ display:flex; flex-direction:column; gap:10px; }
+  .svc-field label{ display:block; font-size:0.8rem; font-weight:700; margin-bottom:3px; }
+  .svc-field input, .svc-field select{ width:100%; border:2px solid #111; border-radius:6px; padding:9px 10px; font-size:0.9rem; font-family:Arial, Helvetica, sans-serif; }
+  .svc-history-row{ color:#666; font-size:0.85rem; padding:4px 0; }
 </style>
 </head>
 <body>
@@ -790,80 +816,76 @@ function renderService(){
     .sort((a,b) => a.time_slot.localeCompare(b.time_slot));
   const history = state.reservations.filter(r => r.status === 'terminee' || r.status === 'annulee');
   const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
+  const timeFmt = (iso) => new Date(iso).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
 
-  let html = `<div class="frame mgr-frame">
-    <div class="mgr-header">
-      <div class="mgr-title">🛎 Service</div>
-      <div style="display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="btn btn-small" id="svc-enable-push">🔔 Activer les alertes</button>
-        <button class="btn btn-small" id="svc-back">← Retour</button>
-      </div>
+  let html = `<div class="service-screen">
+    <div class="ks-header">
+      <button class="ks-btn" id="svc-back">← Retour</button>
+      <div class="ks-title">Service</div>
+      <button class="ks-btn" id="svc-enable-push">Activer les alertes</button>
     </div>
 
-    <div class="mgr-subhead">🔔 Appels en attente ${pending.length ? `<span class="tab-badge">${pending.length}</span>` : ''}</div>`;
+    <div class="ks-cat-title">Appels en attente ${pending.length ? `(${pending.length})` : ''}</div>`;
 
   if(pending.length === 0){
-    html += `<div class="empty-note">Aucun appel en attente.</div>`;
+    html += `<div class="svc-empty">Aucun appel en attente.</div>`;
   } else {
     pending.forEach(c => {
       const mins = Math.max(0, Math.round((Date.now() - new Date(c.created_at).getTime())/60000));
-      html += `<div class="mgr-item call-row">
-        <div class="toggle-row">
-          <span>${c.table_label ? `Table <strong>${esc(c.table_label)}</strong>` : 'Table non précisée'} — il y a ${mins} min</span>
-          <button class="btn btn-gold btn-small" data-svc-done-call="${c.id}">✓ Traité</button>
-        </div>
+      html += `<div class="svc-row">
+        <div class="svc-row-main">${c.table_label ? `Table ${esc(c.table_label)}` : 'Table non précisée'} — il y a ${mins} min</div>
+        <button class="ks-btn" data-svc-done-call="${c.id}">Traité</button>
       </div>`;
     });
   }
 
-  html += `<div class="divider"></div>
-    <div class="mgr-subhead">📅 Réservations</div>
-    <div class="settings-row"><label>Date</label><input type="date" id="svc-date" value="${state.serviceDate}"></div>`;
+  html += `<div class="ks-cat-title">Réservations</div>
+    <div class="svc-date-row"><label>Date</label><input type="date" id="svc-date" value="${state.serviceDate}"></div>`;
 
   if(active.length === 0){
-    html += `<div class="empty-note">Aucune réservation active pour cette date.</div>`;
+    html += `<div class="svc-empty">Aucune réservation active pour cette date.</div>`;
   } else {
     active.forEach(r => {
       const isArrived = r.status === 'arrivee';
-      html += `<div class="mgr-item resa-row">
-        <div class="mgr-item-top" style="flex-wrap:wrap;">
-          <strong>${esc(r.time_slot)}</strong>
-          <span class="mgr-item-summary">${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
+      html += `<div class="svc-resa">
+        <div class="svc-resa-head">
+          <span class="svc-resa-time">${esc(r.time_slot)}</span>
+          <span class="svc-resa-name">${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
         </div>
-        <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone)}</div>
-        <div class="mgr-item-top">
-          <input type="text" class="field-name" placeholder="Table" value="${esc(r.table_label||'')}" data-resa-table="${r.id}">
+        <div class="svc-resa-sub">Tél. ${esc(r.phone)}</div>
+        <div class="svc-resa-row2">
+          <input type="text" class="svc-input" placeholder="Table" value="${esc(r.table_label||'')}" data-resa-table="${r.id}">
           ${isArrived
-            ? `<span class="resa-timer">⏱ ${elapsedMins(r.arrived_at)} min</span>`
-            : `<button class="btn btn-gold btn-small" data-resa-arrive="${r.id}">✓ Arrivé</button>`}
+            ? `<span class="svc-arrival">Prévu ${esc(r.time_slot)} · Arrivé ${timeFmt(r.arrived_at)} · ${elapsedMins(r.arrived_at)} min</span>`
+            : `<button class="ks-btn" data-resa-arrive="${r.id}">Marquer arrivé</button>`}
         </div>
-        <div class="toggle-row">
-          ${isArrived ? `<button class="btn btn-small" data-resa-done="${r.id}">Terminé / Table libérée</button>` : `<span></span>`}
-          <button class="btn btn-rust btn-small" data-resa-cancel="${r.id}">✕ Annuler</button>
+        <div class="svc-resa-actions">
+          ${isArrived ? `<button class="ks-btn" data-resa-done="${r.id}">Terminé / table libérée</button>` : `<span></span>`}
+          <button class="ks-btn svc-btn-danger" data-resa-cancel="${r.id}">Annuler</button>
         </div>
       </div>`;
     });
   }
 
-  html += `<details class="translations-block" style="margin-top:12px;">
+  html += `<details class="svc-details">
     <summary>+ Nouvelle réservation</summary>
-    <div class="lang-group">
-      <div class="settings-row"><label>Créneau horaire</label>
+    <div class="svc-new-form">
+      <div class="svc-field"><label>Créneau horaire</label>
         <select id="svc-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
       </div>
-      <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="svc-new-covers" min="1" value="2"></div>
-      <div class="settings-row"><label>Nom</label><input type="text" id="svc-new-name"></div>
-      <div class="settings-row"><label>Téléphone</label><input type="tel" id="svc-new-phone"></div>
-      <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="svc-new-room"></div>
-      <button class="btn btn-gold btn-small" id="svc-new-submit">Ajouter la réservation</button>
+      <div class="svc-field"><label>Nombre de couverts</label><input type="number" id="svc-new-covers" min="1" value="2"></div>
+      <div class="svc-field"><label>Nom</label><input type="text" id="svc-new-name"></div>
+      <div class="svc-field"><label>Téléphone</label><input type="tel" id="svc-new-phone"></div>
+      <div class="svc-field"><label>Numéro de chambre (optionnel)</label><input type="text" id="svc-new-room"></div>
+      <button class="ks-btn" id="svc-new-submit">Ajouter la réservation</button>
     </div>
   </details>`;
 
   if(history.length > 0){
-    html += `<details class="translations-block" style="margin-top:12px;">
+    html += `<details class="svc-details">
       <summary>Historique du jour (${history.length})</summary>`;
     history.sort((a,b)=> a.time_slot.localeCompare(b.time_slot)).forEach(r => {
-      html += `<div class="lang-group" style="opacity:0.65; font-size:0.82rem;">${esc(r.time_slot)} — ${esc(r.name)} — ${r.status === 'annulee' ? 'Annulée' : 'Terminée'}</div>`;
+      html += `<div class="svc-history-row">${esc(r.time_slot)} — ${esc(r.name)} — ${r.status === 'annulee' ? 'Annulée' : 'Terminée'}</div>`;
     });
     html += `</details>`;
   }
@@ -1404,7 +1426,8 @@ function renderManager(){
         <div class="field-block"><span class="lang-tag">Intervalle (min)</span><input type="number" id="resa-slot-min" min="5" step="5" value="${state.settings.reservation_slot_minutes||15}"></div>
       </div>
       <button class="btn btn-gold btn-small" id="save-resa-settings-btn" style="margin-top:6px;">Enregistrer les créneaux</button>
-      <p class="mgr-hint">Page de réservation à donner à la réception : <strong>${esc(location.origin + location.pathname)}#reservation</strong></p>
+      <p class="mgr-hint">Page de réservation à donner à la réception :</p>
+      <div class="link-row"><input type="text" readonly value="${esc(location.origin + location.pathname)}#reservation" id="resa-link-field"><button class="btn btn-small" id="copy-resa-link">Copier</button></div>
     </div>`;
   }
 
@@ -1643,6 +1666,10 @@ function bindManagerEvents(){
       if(!checkErr(error, "enregistrement des créneaux")) return;
       await loadAll(); render();
       showToast('Créneaux enregistrés.');
+    };
+    document.getElementById('copy-resa-link').onclick = () => {
+      const link = document.getElementById('resa-link-field').value;
+      navigator.clipboard.writeText(link).then(() => showToast('Lien copié !'));
     };
   }
 }
