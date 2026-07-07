@@ -195,6 +195,7 @@
   .tab{ flex:1; min-width:70px; text-align:center; padding:8px 4px; border-radius:6px; font-size:0.82rem; font-weight:500; cursor:pointer; border:1px solid var(--line); color:var(--chalk-dim); }
   .tab.active{ background:var(--gold); color:#20180a; border-color:var(--gold); font-weight:600; }
   .tab-badge{ background:var(--rust); color:#fff; border-radius:10px; padding:0 6px; font-size:0.68rem; font-weight:700; }
+  .resa-timer{ background:var(--gold); color:#20180a; border-radius:12px; padding:5px 12px; font-size:0.82rem; font-weight:700; }
 
   .mgr-subhead{ font-family:'Caveat', cursive; font-size:1.5rem; color:var(--gold); margin:16px 0 6px; }
   .mgr-hint{ font-size:0.72rem; color:var(--chalk-dim); opacity:0.8; margin:-4px 0 10px; }
@@ -325,6 +326,65 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ⚠️ Remplacez cette valeur par la clé publique VAPID générée pendant l'installation
+// des notifications push (voir INSTRUCTIONS-push-notifications.md). Tant qu'elle
+// vaut 'REPLACE_ME', le bouton d'activation des alertes reste désactivé.
+const VAPID_PUBLIC_KEY = 'REPLACE_ME';
+
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for(let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function getPushSubscriptionStatus(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported';
+  try{
+    const reg = await navigator.serviceWorker.getRegistration();
+    if(!reg) return 'not-subscribed';
+    const sub = await reg.pushManager.getSubscription();
+    return sub ? 'subscribed' : 'not-subscribed';
+  } catch(e){ return 'not-subscribed'; }
+}
+
+async function subscribeToPush(){
+  if(VAPID_PUBLIC_KEY === 'REPLACE_ME'){
+    showToast("Alertes push pas encore configurées — voir INSTRUCTIONS-push-notifications.md");
+    return false;
+  }
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    showToast("Cet appareil/navigateur ne supporte pas les notifications push.");
+    return false;
+  }
+  try{
+    const permission = await Notification.requestPermission();
+    if(permission !== 'granted'){ showToast('Permission refusée.'); return false; }
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    const json = sub.toJSON();
+    const { error } = await supabase.from('push_subscriptions').upsert({
+      endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth,
+    }, { onConflict: 'endpoint' });
+    if(error){ console.error(error); showToast("Échec de l'activation des alertes."); return false; }
+    showToast('Alertes activées sur cette tablette ✅');
+    return true;
+  } catch(e){
+    console.error(e);
+    showToast("Échec de l'activation des alertes.");
+    return false;
+  }
+}
 const app = document.getElementById('app');
 
 // ---------- Languages ----------
@@ -402,7 +462,7 @@ function detectLang(){
 }
 
 let state = {
-  view: location.hash === '#gestion' ? 'checking' : 'menu',
+  view: location.hash === '#gestion' ? 'checking' : (location.hash === '#reservation' ? 'reservation' : 'menu'),
   lang: detectLang(),
   theme: localStorage.getItem('menuTheme') || 'light',
   langMenuOpen: false,
@@ -412,6 +472,10 @@ let state = {
   formulas: [],
   mocktailOptions: [],
   serverCalls: [],
+  reservations: [],
+  serviceDate: new Date().toISOString().slice(0,10),
+  reservationSubmitting: false,
+  reservationDone: false,
   editingTab: 'menu',
   loginError: '',
   searchQuery: '',
@@ -464,6 +528,11 @@ async function loadServerCalls(){
   if(!error) state.serverCalls = data || [];
 }
 
+async function loadReservations(date){
+  const { data, error } = await supabase.from('reservations').select('*').eq('reservation_date', date).order('time_slot', { ascending: true });
+  if(!error) state.reservations = data || [];
+}
+
 function itemsFor(catId){ return state.items.filter(i => i.category_id === catId); }
 function itemsForFiltered(catId){ return itemsFor(catId).filter(matchesFilter); }
 function foodCats(){ return state.categories.filter(c => (c.kind||'food') === 'food'); }
@@ -487,10 +556,88 @@ function render(){
   if(state.view === 'login') return renderLogin();
   if(state.view === 'manager') return renderManager();
   if(state.view === 'kitchen') return renderKitchen();
+  if(state.view === 'service') return renderService();
+  if(state.view === 'reservation') return renderReservationPublic();
 }
 
 function renderChecking(){
   app.innerHTML = `<div class="frame"><div class="empty-note">Vérification…</div></div>`;
+}
+
+function generateTimeSlots(start, end, step){
+  const slots = [];
+  const [sh, sm] = (start||'18:00').split(':').map(Number);
+  const [eh, em] = (end||'21:00').split(':').map(Number);
+  let cur = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+  const stepMin = step || 15;
+  while(cur <= endMin){
+    const h = Math.floor(cur / 60).toString().padStart(2, '0');
+    const m = (cur % 60).toString().padStart(2, '0');
+    slots.push(`${h}:${m}`);
+    cur += stepMin;
+  }
+  return slots;
+}
+
+function renderReservationPublic(){
+  const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
+  const today = new Date().toISOString().slice(0,10);
+  let html = `<div class="frame">
+    <div class="restaurant-name">${esc(state.settings.name_fr)}</div>
+    <div class="subtitle">Réservation</div>`;
+
+  if(state.reservationDone){
+    html += `<div class="empty-note">✅ Votre réservation a bien été enregistrée. À bientôt !</div>
+    <button class="btn btn-gold" id="resa-new" style="width:100%; margin-top:10px;">Faire une nouvelle réservation</button>`;
+  } else {
+    html += `<form id="resa-form" class="resa-form">
+      <div class="settings-row"><label>Date</label><input type="date" id="resa-date" min="${today}" value="${today}" required></div>
+      <div class="settings-row"><label>Créneau horaire</label>
+        <select id="resa-slot" required>
+          ${slots.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="resa-covers" min="1" value="2" required></div>
+      <div class="settings-row"><label>Nom</label><input type="text" id="resa-name" required></div>
+      <div class="settings-row"><label>Téléphone</label><input type="tel" id="resa-phone" required></div>
+      <div class="settings-row"><label>Numéro de chambre (si vous êtes client de l'hôtel)</label><input type="text" id="resa-room" placeholder="Optionnel"></div>
+      <div class="login-error" id="resa-err"></div>
+      <button type="submit" class="btn btn-gold" id="resa-submit" style="width:100%;">Réserver</button>
+    </form>`;
+  }
+
+  html += `<div class="footer-link" style="margin-top:18px;"><a id="resa-menu-link">📋 Voir la carte</a></div></div>`;
+  app.innerHTML = html;
+
+  document.getElementById('resa-menu-link').onclick = () => { location.hash = ''; state.view = 'menu'; render(); };
+
+  const newBtn = document.getElementById('resa-new');
+  if(newBtn) newBtn.onclick = () => { state.reservationDone = false; render(); };
+
+  const form = document.getElementById('resa-form');
+  if(form) form.onsubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      reservation_date: document.getElementById('resa-date').value,
+      time_slot: document.getElementById('resa-slot').value,
+      covers: parseInt(document.getElementById('resa-covers').value, 10) || 1,
+      name: document.getElementById('resa-name').value.trim(),
+      phone: document.getElementById('resa-phone').value.trim(),
+      room_number: document.getElementById('resa-room').value.trim(),
+    };
+    if(!payload.name || !payload.phone){
+      document.getElementById('resa-err').textContent = 'Merci de renseigner votre nom et votre téléphone.';
+      return;
+    }
+    const submitBtn = document.getElementById('resa-submit');
+    submitBtn.disabled = true;
+    const { error } = await supabase.from('reservations').insert(payload);
+    submitBtn.disabled = false;
+    if(error){ document.getElementById('resa-err').textContent = "Une erreur est survenue, merci de réessayer ou d'appeler l'établissement."; console.error(error); return; }
+    state.reservationDone = true;
+    render();
+  };
 }
 
 // ---------- shared: render a list of items (food or drinks) ----------
@@ -625,6 +772,153 @@ function renderKitchen(){
   document.querySelectorAll('[data-ks-tap]').forEach(el => el.onclick = () => stockAdjust(el.dataset.ksTap, -1));
   document.querySelectorAll('[data-ks-dec]').forEach(btn => btn.onclick = () => stockAdjust(btn.dataset.ksDec, -1));
   document.querySelectorAll('[data-ks-inc]').forEach(btn => btn.onclick = () => stockAdjust(btn.dataset.ksInc, 1));
+}
+
+let serviceRefreshTimer = null;
+
+function elapsedMins(arrivedAt){
+  if(!arrivedAt) return 0;
+  return Math.max(0, Math.round((Date.now() - new Date(arrivedAt).getTime()) / 60000));
+}
+
+function renderService(){
+  clearInterval(serviceRefreshTimer);
+  serviceRefreshTimer = setInterval(() => { if(state.view === 'service') render(); }, 30000);
+
+  const pending = state.serverCalls.filter(c => c.status === 'pending').sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  const active = state.reservations.filter(r => r.status === 'attente' || r.status === 'arrivee')
+    .sort((a,b) => a.time_slot.localeCompare(b.time_slot));
+  const history = state.reservations.filter(r => r.status === 'terminee' || r.status === 'annulee');
+  const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
+
+  let html = `<div class="frame mgr-frame">
+    <div class="mgr-header">
+      <div class="mgr-title">🛎 Service</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn btn-small" id="svc-enable-push">🔔 Activer les alertes</button>
+        <button class="btn btn-small" id="svc-back">← Retour</button>
+      </div>
+    </div>
+
+    <div class="mgr-subhead">🔔 Appels en attente ${pending.length ? `<span class="tab-badge">${pending.length}</span>` : ''}</div>`;
+
+  if(pending.length === 0){
+    html += `<div class="empty-note">Aucun appel en attente.</div>`;
+  } else {
+    pending.forEach(c => {
+      const mins = Math.max(0, Math.round((Date.now() - new Date(c.created_at).getTime())/60000));
+      html += `<div class="mgr-item call-row">
+        <div class="toggle-row">
+          <span>${c.table_label ? `Table <strong>${esc(c.table_label)}</strong>` : 'Table non précisée'} — il y a ${mins} min</span>
+          <button class="btn btn-gold btn-small" data-svc-done-call="${c.id}">✓ Traité</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  html += `<div class="divider"></div>
+    <div class="mgr-subhead">📅 Réservations</div>
+    <div class="settings-row"><label>Date</label><input type="date" id="svc-date" value="${state.serviceDate}"></div>`;
+
+  if(active.length === 0){
+    html += `<div class="empty-note">Aucune réservation active pour cette date.</div>`;
+  } else {
+    active.forEach(r => {
+      const isArrived = r.status === 'arrivee';
+      html += `<div class="mgr-item resa-row">
+        <div class="mgr-item-top" style="flex-wrap:wrap;">
+          <strong>${esc(r.time_slot)}</strong>
+          <span class="mgr-item-summary">${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
+        </div>
+        <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone)}</div>
+        <div class="mgr-item-top">
+          <input type="text" class="field-name" placeholder="Table" value="${esc(r.table_label||'')}" data-resa-table="${r.id}">
+          ${isArrived
+            ? `<span class="resa-timer">⏱ ${elapsedMins(r.arrived_at)} min</span>`
+            : `<button class="btn btn-gold btn-small" data-resa-arrive="${r.id}">✓ Arrivé</button>`}
+        </div>
+        <div class="toggle-row">
+          ${isArrived ? `<button class="btn btn-small" data-resa-done="${r.id}">Terminé / Table libérée</button>` : `<span></span>`}
+          <button class="btn btn-rust btn-small" data-resa-cancel="${r.id}">✕ Annuler</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  html += `<details class="translations-block" style="margin-top:12px;">
+    <summary>+ Nouvelle réservation</summary>
+    <div class="lang-group">
+      <div class="settings-row"><label>Créneau horaire</label>
+        <select id="svc-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+      </div>
+      <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="svc-new-covers" min="1" value="2"></div>
+      <div class="settings-row"><label>Nom</label><input type="text" id="svc-new-name"></div>
+      <div class="settings-row"><label>Téléphone</label><input type="tel" id="svc-new-phone"></div>
+      <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="svc-new-room"></div>
+      <button class="btn btn-gold btn-small" id="svc-new-submit">Ajouter la réservation</button>
+    </div>
+  </details>`;
+
+  if(history.length > 0){
+    html += `<details class="translations-block" style="margin-top:12px;">
+      <summary>Historique du jour (${history.length})</summary>`;
+    history.sort((a,b)=> a.time_slot.localeCompare(b.time_slot)).forEach(r => {
+      html += `<div class="lang-group" style="opacity:0.65; font-size:0.82rem;">${esc(r.time_slot)} — ${esc(r.name)} — ${r.status === 'annulee' ? 'Annulée' : 'Terminée'}</div>`;
+    });
+    html += `</details>`;
+  }
+
+  html += `</div>`;
+  app.innerHTML = html;
+
+  document.getElementById('svc-back').onclick = () => { clearInterval(serviceRefreshTimer); state.view = 'manager'; render(); };
+  document.getElementById('svc-enable-push').onclick = subscribeToPush;
+  document.getElementById('svc-date').onchange = async (e) => {
+    state.serviceDate = e.target.value;
+    await loadReservations(state.serviceDate);
+    render();
+  };
+  document.querySelectorAll('[data-svc-done-call]').forEach(btn => btn.onclick = async () => {
+    const { error } = await supabase.from('server_calls').update({ status: 'done' }).eq('id', btn.dataset.svcDoneCall);
+    if(!checkErr(error, "traitement de l'appel")) return;
+    await loadServerCalls(); render();
+  });
+  document.querySelectorAll('[data-resa-table]').forEach(inp => inp.onchange = async () => {
+    const { error } = await supabase.from('reservations').update({ table_label: inp.value.trim() }).eq('id', inp.dataset.resaTable);
+    if(!checkErr(error, "attribution de la table")) return;
+    await loadReservations(state.serviceDate); render();
+  });
+  document.querySelectorAll('[data-resa-arrive]').forEach(btn => btn.onclick = async () => {
+    const { error } = await supabase.from('reservations').update({ status: 'arrivee', arrived_at: new Date().toISOString() }).eq('id', btn.dataset.resaArrive);
+    if(!checkErr(error, "arrivée du client")) return;
+    await loadReservations(state.serviceDate); render();
+  });
+  document.querySelectorAll('[data-resa-done]').forEach(btn => btn.onclick = async () => {
+    const { error } = await supabase.from('reservations').update({ status: 'terminee' }).eq('id', btn.dataset.resaDone);
+    if(!checkErr(error, "clôture de la réservation")) return;
+    await loadReservations(state.serviceDate); render();
+  });
+  document.querySelectorAll('[data-resa-cancel]').forEach(btn => btn.onclick = async () => {
+    if(!confirm('Annuler cette réservation ?')) return;
+    const { error } = await supabase.from('reservations').update({ status: 'annulee' }).eq('id', btn.dataset.resaCancel);
+    if(!checkErr(error, "annulation de la réservation")) return;
+    await loadReservations(state.serviceDate); render();
+  });
+  document.getElementById('svc-new-submit').onclick = async () => {
+    const payload = {
+      reservation_date: state.serviceDate,
+      time_slot: document.getElementById('svc-new-slot').value,
+      covers: parseInt(document.getElementById('svc-new-covers').value, 10) || 1,
+      name: document.getElementById('svc-new-name').value.trim(),
+      phone: document.getElementById('svc-new-phone').value.trim(),
+      room_number: document.getElementById('svc-new-room').value.trim(),
+    };
+    if(!payload.name){ showToast('Merci de renseigner un nom.'); return; }
+    const { error } = await supabase.from('reservations').insert(payload);
+    if(!checkErr(error, "ajout de la réservation")) return;
+    await loadReservations(state.serviceDate); render();
+    showToast('Réservation ajoutée.');
+  };
 }
 
 // ---------- CUSTOMER MENU ----------
@@ -952,6 +1246,7 @@ function renderManager(){
       <div class="mgr-title">Gestion de la carte</div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn btn-small" id="kitchen-btn">📦 Stock cuisine</button>
+        <button class="btn btn-small" id="service-btn">🛎 Service</button>
         <button class="btn btn-small" id="exit-btn">Voir la carte</button>
         <button class="btn btn-small btn-rust" id="logout-btn">Déconnexion</button>
       </div>
@@ -1098,6 +1393,18 @@ function renderManager(){
         { field:'story', type:'textarea', placeholder:(l)=> `Histoire (${LANG_LABEL[l]}, optionnel)` }
       ])}
       <button class="btn btn-gold btn-small" id="save-story-btn" style="margin-top:6px;">Enregistrer l'histoire</button>
+    </div>
+
+    <div class="divider"></div>
+    <div class="mgr-subhead">📅 Créneaux de réservation</div>
+    <div class="mgr-note-block">
+      <div class="mgr-item-top">
+        <div class="field-block"><span class="lang-tag">Début</span><input type="time" id="resa-start" value="${esc(state.settings.reservation_start||'18:00')}"></div>
+        <div class="field-block"><span class="lang-tag">Fin</span><input type="time" id="resa-end" value="${esc(state.settings.reservation_end||'21:00')}"></div>
+        <div class="field-block"><span class="lang-tag">Intervalle (min)</span><input type="number" id="resa-slot-min" min="5" step="5" value="${state.settings.reservation_slot_minutes||15}"></div>
+      </div>
+      <button class="btn btn-gold btn-small" id="save-resa-settings-btn" style="margin-top:6px;">Enregistrer les créneaux</button>
+      <p class="mgr-hint">Page de réservation à donner à la réception : <strong>${esc(location.origin + location.pathname)}#reservation</strong></p>
     </div>`;
   }
 
@@ -1129,6 +1436,11 @@ function setupSortable(){
 function bindManagerEvents(){
   document.getElementById('exit-btn').onclick = () => { location.hash=''; state.view='menu'; render(); };
   document.getElementById('kitchen-btn').onclick = () => { state.view = 'kitchen'; render(); };
+  document.getElementById('service-btn').onclick = async () => {
+    await Promise.all([loadServerCalls(), loadReservations(state.serviceDate)]);
+    state.view = 'service';
+    render();
+  };
   document.getElementById('logout-btn').onclick = async () => { await supabase.auth.signOut(); location.hash=''; state.view='menu'; render(); };
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => { state.editingTab = t.dataset.tab; render(); });
 
@@ -1321,6 +1633,17 @@ function bindManagerEvents(){
       await loadAll(); render();
       showToast('Histoire enregistrée.');
     };
+    document.getElementById('save-resa-settings-btn').onclick = async () => {
+      const payload = {
+        reservation_start: document.getElementById('resa-start').value || '18:00',
+        reservation_end: document.getElementById('resa-end').value || '21:00',
+        reservation_slot_minutes: parseInt(document.getElementById('resa-slot-min').value, 10) || 15,
+      };
+      const { error } = await supabase.from('restaurant_settings').update(payload).eq('id', 1);
+      if(!checkErr(error, "enregistrement des créneaux")) return;
+      await loadAll(); render();
+      showToast('Créneaux enregistrés.');
+    };
   }
 }
 
@@ -1333,19 +1656,27 @@ function subscribeRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'formulas' }, async () => { await loadAll(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'mocktail_options' }, async () => { await loadAll(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'server_calls' }, async () => {
-      if(state.view === 'manager'){ await loadServerCalls(); render(); }
+      if(state.view === 'manager' || state.view === 'service'){ await loadServerCalls(); render(); }
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, async () => {
+      if(state.view === 'service'){ await loadReservations(state.serviceDate); render(); }
     })
     .subscribe();
 }
 
 window.addEventListener('hashchange', async () => {
-  if(location.hash === '#gestion' && state.view === 'menu'){
+  if(location.hash === '#gestion' && (state.view === 'menu' || state.view === 'reservation')){
     const { data: { session } } = await supabase.auth.getSession();
     state.view = session ? 'manager' : 'login';
     if(session) await loadServerCalls();
     render();
+  } else if(location.hash === '#reservation' && state.view !== 'reservation'){
+    state.view = 'reservation';
+    render();
+  } else if(location.hash !== '#gestion' && location.hash !== '#reservation' && state.view !== 'menu'){
+    state.view = 'menu';
+    render();
   }
-  if(location.hash !== '#gestion' && state.view !== 'menu'){ state.view='menu'; render(); }
 });
 
 (async function init(){
