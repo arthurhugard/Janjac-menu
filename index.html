@@ -275,10 +275,13 @@
   .settings-row input{ width:100%; background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk); border-radius:5px; padding:8px 10px; font-size:0.9rem; }
   .qr-box{ text-align:center; padding:10px 0 4px; }
   .qr-box canvas, .qr-box img{ background:#fff; padding:12px; border-radius:8px; }
+  .legal-footer{ text-align:center; font-size:0.68rem; color:var(--chalk-dim); opacity:0.75; line-height:1.6; margin-bottom:10px; }
+  .legal-footer p{ margin:2px 0; }
+  .legal-footer .legal-alcohol{ font-weight:600; }
 
-  /* Tablet optimizations — manager view only */
+  /* Tablet optimizations — manager + reservation views use full width */
   @media (min-width:680px){
-    .mgr-frame{ max-width:820px; padding:36px 44px 36px; }
+    .mgr-frame, .resa-frame{ max-width:1300px; width:96%; padding:36px 44px 40px; }
     .mgr-frame .mgr-title{ font-size:2.3rem; }
     .mgr-frame .tabs{ gap:10px; }
     .mgr-frame .tab{ padding:14px 8px; font-size:0.95rem; }
@@ -295,7 +298,49 @@
     .mgr-frame .switch.off::after{ transform:translateX(22px); }
     .mgr-frame .allergen-chip{ padding:6px 12px 6px 8px; font-size:0.82rem; }
     .mgr-frame .new-cat-row input{ padding:11px 13px; font-size:0.9rem; }
+
+    /* Use the freed-up width: lay category/slot cards out in a grid instead of one long column */
+    #food-cats-list, #drink-cats-list, .mgr-cat-grid{
+      display:grid; grid-template-columns:repeat(auto-fit, minmax(420px,1fr)); gap:18px; align-items:start;
+    }
+    #food-cats-list > .mgr-cat, #drink-cats-list > .mgr-cat{ margin-bottom:0; }
   }
+  @media (min-width:1000px){
+    .mgr-frame .resa-row-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(340px,1fr)); gap:14px; align-items:start; }
+    .mgr-frame .resa-row-grid > .mgr-item{ margin-top:0; }
+  }
+
+  /* Reservation page: sticky bottom bar + popup */
+  .resa-sticky-bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:45;
+    background:var(--bg2); border-top:2px solid var(--frame);
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    display:flex; justify-content:center;
+    box-shadow:0 -8px 24px rgba(0,0,0,0.3);
+  }
+  .resa-sticky-bar button{
+    width:100%; max-width:480px; background:var(--gold); color:#20180a; border:none;
+    border-radius:24px; padding:15px 20px; font-size:1.05rem; font-weight:700; cursor:pointer;
+    font-family:'Work Sans', sans-serif;
+  }
+  .resa-modal-overlay{
+    position:fixed; inset:0; background:rgba(10,15,12,0.72); z-index:60;
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  @media (min-width:680px){ .resa-modal-overlay{ align-items:center; } }
+  .resa-modal{
+    background:var(--bg2); border:2px solid var(--frame); border-radius:16px 16px 0 0;
+    max-width:520px; width:100%; max-height:88vh; overflow-y:auto;
+    padding:24px 22px calc(24px + env(safe-area-inset-bottom));
+    box-shadow:0 -10px 40px rgba(0,0,0,0.4);
+  }
+  @media (min-width:680px){ .resa-modal{ border-radius:16px; } }
+  .resa-modal-close{
+    position:absolute; top:14px; right:16px; background:transparent; border:none; color:var(--chalk-dim);
+    font-size:1.4rem; cursor:pointer; line-height:1; padding:4px;
+  }
+  .resa-modal h3{ font-family:'Caveat', cursive; font-size:1.8rem; color:var(--gold); margin:0 0 14px; }
+
 
   /* Kitchen stock counter — tablet-friendly, plain black & white */
   .kitchen-stock{ background:#fff; color:#111; min-height:100vh; padding:20px; font-family:Arial, Helvetica, sans-serif; }
@@ -420,6 +465,26 @@ const UI = {
   askTableNumber:{ fr:"Numéro de table (optionnel) :", en:"Table number (optional):", es:"Número de mesa (opcional):", de:"Tischnummer (optional):" },
   callSent:     { fr:"Un serveur a été prévenu, merci de patienter 🙏", en:"A waiter has been notified, thank you for your patience 🙏", es:"Se ha avisado a un camarero, gracias por su paciencia 🙏", de:"Ein Kellner wurde benachrichtigt, danke für Ihre Geduld 🙏" },
   callCooldown: { fr:"Un serveur a déjà été prévenu, merci de patienter.", en:"A waiter has already been notified, please wait.", es:"Ya se ha avisado a un camarero, por favor espere.", de:"Ein Kellner wurde bereits benachrichtigt, bitte warten Sie." },
+  legalPrices:  { fr:"Prix TTC, service compris.", en:"Prices include tax and service.", es:"Precios con impuestos y servicio incluidos.", de:"Preise inkl. MwSt. und Bedienung." },
+  legalAlcohol: { fr:"L'abus d'alcool est dangereux pour la santé, à consommer avec modération.", en:"Alcohol abuse is dangerous for your health — drink in moderation.", es:"El abuso del alcohol es peligroso para la salud, consúmalo con moderación.", de:"Alkoholmissbrauch ist gesundheitsschädlich — bitte in Maßen genießen." },
+  legalRoomService: { fr:"Majoration de 15% pour le service en chambre.", en:"15% surcharge applies to room service.", es:"Recargo del 15% para el servicio de habitaciones.", de:"15% Aufschlag für den Zimmerservice." },
+  reserveBtn:   { fr:"📅 Réserver", en:"📅 Reserve", es:"📅 Reservar", de:"📅 Reservieren" },
+  reserveModalTitle: { fr:"Réserver une table", en:"Reserve a table", es:"Reservar una mesa", de:"Tisch reservieren" },
+  reserveDate:  { fr:"Date", en:"Date", es:"Fecha", de:"Datum" },
+  reserveSlot:  { fr:"Créneau horaire", en:"Time", es:"Hora", de:"Uhrzeit" },
+  reserveCovers:{ fr:"Nombre de couverts", en:"Number of guests", es:"Número de comensales", de:"Anzahl Personen" },
+  reserveName:  { fr:"Nom", en:"Name", es:"Nombre", de:"Name" },
+  reservePhone: { fr:"Téléphone", en:"Phone", es:"Teléfono", de:"Telefon" },
+  reserveRoom:  { fr:"Numéro de chambre (si vous êtes client de l'hôtel)", en:"Room number (if you're a hotel guest)", es:"Número de habitación (si es huésped del hotel)", de:"Zimmernummer (falls Hotelgast)" },
+  reserveNotes: { fr:"Informations complémentaires", en:"Additional information", es:"Información adicional", de:"Zusätzliche Informationen" },
+  reserveSubmit:{ fr:"Confirmer la réservation", en:"Confirm reservation", es:"Confirmar reserva", de:"Reservierung bestätigen" },
+  reserveDone:  { fr:"✅ Votre réservation a bien été enregistrée. À bientôt !", en:"✅ Your reservation has been confirmed. See you soon!", es:"✅ Su reserva ha sido registrada. ¡Hasta pronto!", de:"✅ Ihre Reservierung wurde bestätigt. Bis bald!" },
+  reserveNameRequired: { fr:"Merci de renseigner votre nom et votre téléphone.", en:"Please enter your name and phone number.", es:"Indique su nombre y teléfono, por favor.", de:"Bitte Name und Telefonnummer angeben." },
+  reserveFull:  { fr:"Ce créneau est complet. Merci de choisir un autre horaire ou d'appeler l'établissement.", en:"This time slot is full. Please choose another time or call us.", es:"Este horario está completo. Elija otra hora o llámenos.", de:"Dieser Zeitraum ist ausgebucht. Bitte wählen Sie eine andere Uhrzeit oder rufen Sie uns an." },
+  reserveError: { fr:"Une erreur est survenue, merci de réessayer ou d'appeler l'établissement.", en:"Something went wrong, please try again or call us.", es:"Ha ocurrido un error, inténtelo de nuevo o llámenos.", de:"Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut oder rufen Sie uns an." },
+  reserveNewBtn:{ fr:"Faire une nouvelle réservation", en:"Make another reservation", es:"Hacer otra reserva", de:"Weitere Reservierung vornehmen" },
+  seeMenu:      { fr:"📋 Voir la carte", en:"📋 View the menu", es:"📋 Ver la carta", de:"📋 Speisekarte ansehen" },
+  reservePageSubtitle: { fr:"Réservation", en:"Reservation", es:"Reserva", de:"Reservierung" },
 };
 function t(key, L){ return (UI[key] && (UI[key][L] || UI[key].fr)) || ''; }
 
@@ -476,6 +541,7 @@ let state = {
   serviceDate: new Date().toISOString().slice(0,10),
   reservationSubmitting: false,
   reservationDone: false,
+  reservationModalOpen: false,
   editingTab: 'menu',
   loginError: '',
   searchQuery: '',
@@ -585,38 +651,111 @@ function generateTimeSlots(start, end, step){
   return slots;
 }
 
+// Version simplifiée d'une liste de plats pour la page de réservation :
+// juste le nom et le prix, sans description/photo/tags/allergènes, pour rester lisible.
+function renderSimpleItemsList(items, L){
+  return items.map(it => {
+    const name = tr(it, 'name', L);
+    const outOfStock = !!it.out_of_stock;
+    return `<div class="item ${outOfStock ? 'out-of-stock' : ''}">
+      ${outOfStock ? `<div class="sold-out-tag">${esc(t('soldOut', L))}</div>` : ''}
+      <div class="item-row">
+        <span class="item-name">${esc(name)}</span>
+        <span class="item-leader"></span>
+        <span class="item-price">${esc(it.price||'')}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function renderReservationPublic(){
+  const L = state.lang;
+  applyTheme();
   const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
   const today = new Date().toISOString().slice(0,10);
-  let html = `<div class="frame">
-    <div class="restaurant-name">${esc(state.settings.name_fr)}</div>
-    <div class="subtitle">Réservation</div>`;
+  const fCats = foodCats().filter(c => itemsFor(c.id).length > 0);
+  const name = tr(state.settings, 'name', L);
 
-  if(state.reservationDone){
-    html += `<div class="empty-note">✅ Votre réservation a bien été enregistrée. À bientôt !</div>
-    <button class="btn btn-gold" id="resa-new" style="width:100%; margin-top:10px;">Faire une nouvelle réservation</button>`;
-  } else {
-    html += `<form id="resa-form" class="resa-form">
-      <div class="settings-row"><label>Date</label><input type="date" id="resa-date" min="${today}" value="${today}" required></div>
-      <div class="settings-row"><label>Créneau horaire</label>
-        <select id="resa-slot" required>
-          ${slots.map(s => `<option value="${s}">${s}</option>`).join('')}
-        </select>
+  let html = `<div class="frame resa-frame" style="padding-bottom:90px;">
+    <div class="lang-toggle">
+      <button class="lang-current" id="lang-current-btn" title="Changer de langue">${LANG_FLAG[L]}</button>
+      <div class="lang-dropdown ${state.langMenuOpen ? 'open' : ''}">
+        ${LANGS.filter(l => l !== L).map(l => `<button class="lang-flag-btn" data-lang="${l}" title="${LANG_LABEL[l]}">${LANG_FLAG[l]}</button>`).join('')}
       </div>
-      <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="resa-covers" min="1" value="2" required></div>
-      <div class="settings-row"><label>Nom</label><input type="text" id="resa-name" required></div>
-      <div class="settings-row"><label>Téléphone</label><input type="tel" id="resa-phone" required></div>
-      <div class="settings-row"><label>Numéro de chambre (si vous êtes client de l'hôtel)</label><input type="text" id="resa-room" placeholder="Optionnel"></div>
-      <div class="settings-row"><label>Informations complémentaires</label><input type="text" id="resa-notes" placeholder="Allergie, anniversaire... (optionnel)"></div>
-      <div class="login-error" id="resa-err"></div>
-      <button type="submit" class="btn btn-gold" id="resa-submit" style="width:100%;">Réserver</button>
-    </form>`;
+    </div>
+    <div class="restaurant-name" style="margin-top:38px;">${esc(name)}</div>
+    <div class="subtitle">${esc(t('reservePageSubtitle', L))}</div>
+    <div class="divider"></div>`;
+
+  if(state.formulas.length > 0){
+    const note = tr(state.settings, 'formulas_note', L);
+    html += `<div class="formula-section">
+      <div class="category-name">${esc(t('formulas', L))}</div>
+      ${renderSimpleItemsList(state.formulas, L)}
+      ${note ? `<div class="formula-note">${esc(note)}</div>` : ''}
+    </div><div class="divider"></div>`;
   }
 
-  html += `<div class="footer-link" style="margin-top:18px;"><a id="resa-menu-link">📋 Voir la carte</a></div></div>`;
+  if(fCats.length === 0){
+    html += `<div class="empty-note">${esc(t('emptyMenu', L))}</div>`;
+  } else {
+    fCats.forEach(cat => {
+      html += `<div class="category"><div class="category-name">${esc(tr(cat,'name',L))}</div>${renderSimpleItemsList(itemsFor(cat.id), L)}</div>`;
+    });
+  }
+
+  html += `<div class="footer-link" style="margin-top:18px;"><a id="resa-menu-link">${esc(t('seeMenu', L))}</a></div></div>
+  <div class="resa-sticky-bar"><button id="resa-open-modal">${esc(t('reserveBtn', L))}</button></div>`;
+
+  if(state.reservationModalOpen){
+    html += renderReservationModal(L, slots, today);
+  }
+
   app.innerHTML = html;
 
+  document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { state.lang = b.dataset.lang; state.langMenuOpen = false; localStorage.setItem('menuLang', state.lang); render(); });
+  document.getElementById('lang-current-btn').onclick = (e) => { e.stopPropagation(); state.langMenuOpen = !state.langMenuOpen; render(); };
   document.getElementById('resa-menu-link').onclick = () => { location.hash = ''; state.view = 'menu'; render(); };
+  document.getElementById('resa-open-modal').onclick = () => { state.reservationModalOpen = true; state.reservationDone = false; render(); };
+
+  bindReservationModalEvents(slots, today);
+}
+
+function renderReservationModal(L, slots, today){
+  return `<div class="resa-modal-overlay" id="resa-overlay">
+    <div class="resa-modal">
+      <button class="resa-modal-close" id="resa-modal-close">✕</button>
+      ${state.reservationDone ? `
+        <h3>${esc(t('reservePageSubtitle', L))}</h3>
+        <div class="empty-note">${esc(t('reserveDone', L))}</div>
+        <button class="btn btn-gold" id="resa-new" style="width:100%; margin-top:10px;">${esc(t('reserveNewBtn', L))}</button>
+      ` : `
+        <h3>${esc(t('reserveModalTitle', L))}</h3>
+        <form id="resa-form" class="resa-form">
+          <div class="settings-row"><label>${esc(t('reserveDate', L))}</label><input type="date" id="resa-date" min="${today}" value="${today}" required></div>
+          <div class="settings-row"><label>${esc(t('reserveSlot', L))}</label>
+            <select id="resa-slot" required>${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+          </div>
+          <div class="settings-row"><label>${esc(t('reserveCovers', L))}</label><input type="number" id="resa-covers" min="1" value="2" required></div>
+          <div class="settings-row"><label>${esc(t('reserveName', L))}</label><input type="text" id="resa-name" required></div>
+          <div class="settings-row"><label>${esc(t('reservePhone', L))}</label><input type="tel" id="resa-phone" required></div>
+          <div class="settings-row"><label>${esc(t('reserveRoom', L))}</label><input type="text" id="resa-room" placeholder="—"></div>
+          <div class="settings-row"><label>${esc(t('reserveNotes', L))}</label><input type="text" id="resa-notes" placeholder="—"></div>
+          <div class="login-error" id="resa-err"></div>
+          <button type="submit" class="btn btn-gold" id="resa-submit" style="width:100%;">${esc(t('reserveSubmit', L))}</button>
+        </form>
+      `}
+    </div>
+  </div>`;
+}
+
+function bindReservationModalEvents(slots, today){
+  const overlay = document.getElementById('resa-overlay');
+  if(!overlay) return;
+  const L = state.lang;
+  const closeModal = () => { state.reservationModalOpen = false; render(); };
+  document.getElementById('resa-modal-close').onclick = closeModal;
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
 
   const newBtn = document.getElementById('resa-new');
   if(newBtn) newBtn.onclick = () => { state.reservationDone = false; render(); };
@@ -634,7 +773,7 @@ function renderReservationPublic(){
       notes: document.getElementById('resa-notes').value.trim(),
     };
     if(!payload.name || !payload.phone){
-      document.getElementById('resa-err').textContent = 'Merci de renseigner votre nom et votre téléphone.';
+      document.getElementById('resa-err').textContent = t('reserveNameRequired', L);
       return;
     }
     const submitBtn = document.getElementById('resa-submit');
@@ -643,8 +782,8 @@ function renderReservationPublic(){
     submitBtn.disabled = false;
     if(error){
       document.getElementById('resa-err').textContent = (error.message||'').includes('CAPACITY_FULL')
-        ? `Ce créneau est complet. Merci de choisir un autre horaire ou d'appeler l'établissement.`
-        : "Une erreur est survenue, merci de réessayer ou d'appeler l'établissement.";
+        ? t('reserveFull', L)
+        : t('reserveError', L);
       console.error(error);
       return;
     }
@@ -864,6 +1003,7 @@ function renderService(){
   if(active.length === 0){
     html += `<div class="empty-note">Aucune réservation active pour cette date.</div>`;
   } else {
+    html += `<div class="resa-row-grid">`;
     active.forEach(r => {
       const isArrived = r.status === 'arrivee';
       html += `<div class="mgr-item resa-row">
@@ -888,6 +1028,7 @@ function renderService(){
         </div>
       </div>`;
     });
+    html += `</div>`;
   }
 
   html += `<details class="translations-block" style="margin-top:12px;">
@@ -989,7 +1130,8 @@ function renderReception(){
       <div class="mgr-title">📖 Réception</div>
       <button class="btn btn-small" id="rcp-back">← Retour</button>
     </div>
-    <div class="settings-row"><label>Date</label><input type="date" id="rcp-date" value="${state.serviceDate}"></div>`;
+    <div class="settings-row"><label>Date</label><input type="date" id="rcp-date" value="${state.serviceDate}"></div>
+    <div class="mgr-cat-grid">`;
 
   slots.forEach(s => {
     const resas = byStatus(s);
@@ -1031,6 +1173,7 @@ function renderReception(){
     }
     html += `</div>`;
   });
+  html += `</div>`;
 
   html += `<details class="translations-block">
     <summary>+ Nouvelle réservation</summary>
@@ -1143,7 +1286,6 @@ function renderMenu(){
   const filterActive = !!(state.searchQuery.trim() || state.tagFilter || state.excludedAllergens.length);
   const noResults = filterActive && !hasFormulas && !hasFood && !hasDrinks;
 
-  const quickTags = ['coeur','piment','vg'];
 
   let html = `<div class="frame">
     <button class="theme-toggle" id="theme-toggle-btn" title="Changer le thème">${state.theme==='light' ? '🌙' : '☀️'}</button>
@@ -1153,20 +1295,9 @@ function renderMenu(){
         ${LANGS.filter(l => l !== L).map(l => `<button class="lang-flag-btn" data-lang="${l}" title="${LANG_LABEL[l]}">${LANG_FLAG[l]}</button>`).join('')}
       </div>
     </div>
-    <div class="restaurant-name">${esc(name)}</div>
-    <div class="subtitle">${esc(t('subtitle', L))}</div>
-    <div class="site-nav">
-      ${hasFormulas ? `<button data-jump="sec-formules">📋 ${esc(t('formulas', L))}</button>` : ''}
-      ${hasFood ? `<button data-jump="sec-plats">🍽 ${esc(t('food', L))}</button>` : ''}
-      ${hasDrinks ? `<button data-jump="sec-boissons">🍷 ${esc(t('drinks', L))}</button>` : ''}
-    </div>
 
-    <div class="filter-bar">
+    <div class="filter-bar" style="margin-top:38px;">
       <input type="search" id="search-input" class="search-input" placeholder="🔍 ${esc(t('searchPlaceholder', L))}" value="${esc(state.searchQuery)}">
-      <div class="chip-row">
-        <span class="tag-chip ${state.tagFilter===''?'active':''}" data-tag-filter="">${esc(t('all', L))}</span>
-        ${quickTags.map(k => `<span class="tag-chip ${state.tagFilter===k?'active':''}" data-tag-filter="${k}">${TAGS[k].emoji} ${esc(TAGS[k][L]||TAGS[k].fr)}</span>`).join('')}
-      </div>
       <details class="allergen-filter">
         <summary>🚫 ${esc(t('allergenFilter', L))}${state.excludedAllergens.length ? ` (${state.excludedAllergens.length})` : ''}</summary>
         <div class="allergen-grid">
@@ -1175,6 +1306,14 @@ function renderMenu(){
           </label>`).join('')}
         </div>
       </details>
+    </div>
+
+    <div class="restaurant-name">${esc(name)}</div>
+    <div class="subtitle">${esc(t('subtitle', L))}</div>
+    <div class="site-nav">
+      ${hasFormulas ? `<button data-jump="sec-formules">📋 ${esc(t('formulas', L))}</button>` : ''}
+      ${hasFood ? `<button data-jump="sec-plats">🍽 ${esc(t('food', L))}</button>` : ''}
+      ${hasDrinks ? `<button data-jump="sec-boissons">🍷 ${esc(t('drinks', L))}</button>` : ''}
     </div>
     ${renderHighlights(L)}`;
 
@@ -1243,7 +1382,13 @@ function renderMenu(){
     html += `<div class="footer-link"><a href="${esc(state.settings.instagram_url)}" target="_blank" rel="noopener">📷 Instagram</a></div>`;
   }
 
-  html += `<div class="footer-link"><a id="mgr-link">${esc(t('managerArea', L))}</a></div></div>
+  html += `<div class="divider"></div>
+  <div class="legal-footer">
+    <p>${esc(t('legalPrices', L))}</p>
+    <p>${esc(t('legalRoomService', L))}</p>
+    <p class="legal-alcohol">⚠️ ${esc(t('legalAlcohol', L))}</p>
+  </div>
+  <div class="footer-link"><a id="mgr-link">${esc(t('managerArea', L))}</a></div></div>
   <button class="call-server-btn" id="call-server-btn">${esc(t('callServerBtn', L))}</button>`;
   app.innerHTML = html;
   document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { state.lang = b.dataset.lang; state.langMenuOpen = false; localStorage.setItem('menuLang', state.lang); render(); });
