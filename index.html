@@ -433,9 +433,9 @@ async function subscribeToPush(){
 const app = document.getElementById('app');
 
 // ---------- Languages ----------
-const LANGS = ['fr','en','es','de'];
-const LANG_LABEL = { fr:'FR', en:'EN', es:'ES', de:'DE' };
-const LANG_FLAG = { fr:'🇫🇷', en:'🇬🇧', es:'🇪🇸', de:'🇩🇪' };
+const LANGS = ['fr','en'];
+const LANG_LABEL = { fr:'FR', en:'EN' };
+const LANG_FLAG = { fr:'🇫🇷', en:'🇬🇧' };
 const EXTRA_LANGS = LANGS.filter(l => l !== 'fr'); // used in manager "translations" blocks
 
 // tr(obj, 'name', 'es')  ->  obj.name_es if present, else obj.name_fr (fallback)
