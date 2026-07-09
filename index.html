@@ -992,9 +992,9 @@ function elapsedMins(arrivedAt){
   return Math.max(0, Math.round((Date.now() - new Date(arrivedAt).getTime()) / 60000));
 }
 
-function tableSelectOptions(current){
+function tableSelectOptions(current, placeholder){
   const n = state.settings.table_count || 20;
-  let opts = `<option value="">— Table —</option>`;
+  let opts = `<option value="">${placeholder || '— Table —'}</option>`;
   for(let i=1;i<=n;i++){ opts += `<option value="${i}" ${String(current)===String(i)?'selected':''}>${i}</option>`; }
   return opts;
 }
@@ -1053,9 +1053,12 @@ function renderService(){
   } else {
     pending.forEach(c => {
       const mins = Math.max(0, Math.round((Date.now() - new Date(c.created_at).getTime())/60000));
+      const matched = state.reservations.find(r => r.qr_table_number && String(r.qr_table_number) === String(c.table_label) && (r.status === 'arrivee' || r.status === 'attente'));
       html += `<div class="mgr-item call-row">
         <div class="toggle-row">
-          <span>${c.table_label ? `Table <strong>${esc(c.table_label)}</strong>` : 'Table non précisée'} — il y a ${mins} min</span>
+          <span>${c.table_label ? `Table <strong>${esc(c.table_label)}</strong>` : 'Table non précisée'} — il y a ${mins} min
+            ${matched ? `<br><span style="opacity:0.8; font-size:0.85rem;">${matched.vip?'⭐ ':''}${esc(matched.name)} — ${matched.covers} couvert${matched.covers>1?'s':''}</span>` : ''}
+          </span>
           <button class="btn btn-gold btn-small" data-svc-done-call="${c.id}">✓ Traité</button>
         </div>
       </div>`;
@@ -1064,7 +1067,15 @@ function renderService(){
 
   html += `<div class="divider"></div>
     <div class="mgr-subhead">📅 Réservations</div>
-    <div class="settings-row"><label>Date</label><input type="date" id="svc-date" value="${state.serviceDate}"></div>`;
+    <div class="settings-row"><label>Date</label><input type="date" id="svc-date" value="${state.serviceDate}"></div>
+    <details class="translations-block" style="margin-bottom:14px;">
+      <summary>🚶 Walk-in (sans réservation)</summary>
+      <div class="lang-group">
+        <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="walkin-covers" min="1" value="2"></div>
+        <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="walkin-room"></div>
+        <button class="btn btn-gold btn-small" id="walkin-submit">Ajouter le walk-in</button>
+      </div>
+    </details>`;
 
   if(active.length === 0){
     html += `<div class="empty-note">Aucune réservation active pour cette date.</div>`;
@@ -1079,10 +1090,15 @@ function renderService(){
         </div>
         <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone)}${r.notes ? ` — 📝 ${esc(r.notes)}` : ''}</div>
         <div class="mgr-item-top">
-          <select class="field-name" data-resa-table="${r.id}">${tableSelectOptions(r.table_label)}</select>
+          <input type="text" class="field-name" placeholder="Table (n° interne, optionnel)" value="${esc(r.table_label||'')}" data-resa-table="${r.id}">
           ${isArrived
             ? `<span class="resa-timer">⏱ ${elapsedMins(r.arrived_at)} min</span>`
             : `<button class="btn btn-gold btn-small" data-resa-arrive="${r.id}">✓ Arrivé</button>`}
+        </div>
+        <div class="mgr-item-top">
+          <label class="toggle" style="flex:1;">📟 QR code de table
+            <select data-resa-qr="${r.id}">${tableSelectOptions(r.qr_table_number, '— aucun —')}</select>
+          </label>
         </div>
         <div class="toggle-row">
           ${r.phone ? `<div style="display:flex; gap:6px;">
@@ -1140,6 +1156,12 @@ function renderService(){
     if(!checkErr(error, "attribution de la table")) return;
     await loadReservations(state.serviceDate); render();
   });
+  document.querySelectorAll('[data-resa-qr]').forEach(sel => sel.onchange = async () => {
+    const val = sel.value ? parseInt(sel.value, 10) : null;
+    const { error } = await supabase.from('reservations').update({ qr_table_number: val }).eq('id', sel.dataset.resaQr);
+    if(!checkErr(error, "attribution du QR code")) return;
+    await loadReservations(state.serviceDate); render();
+  });
   document.querySelectorAll('[data-resa-arrive]').forEach(btn => btn.onclick = async () => {
     const { error } = await supabase.from('reservations').update({ status: 'arrivee', arrived_at: new Date().toISOString() }).eq('id', btn.dataset.resaArrive);
     if(!checkErr(error, "arrivée du client")) return;
@@ -1179,6 +1201,26 @@ function renderService(){
     if(!checkErr(error, "ajout de la réservation")) return;
     await loadReservations(state.serviceDate); render();
     showToast('Réservation ajoutée.');
+  };
+
+  document.getElementById('walkin-submit').onclick = async () => {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const payload = {
+      reservation_date: state.serviceDate,
+      time_slot: `${hh}:${mm}`,
+      covers: parseInt(document.getElementById('walkin-covers').value, 10) || 1,
+      name: 'Walk-in',
+      room_number: document.getElementById('walkin-room').value.trim(),
+      is_walkin: true,
+      status: 'arrivee',
+      arrived_at: now.toISOString(),
+    };
+    const { error } = await supabase.from('reservations').insert(payload);
+    if(!checkErr(error, "ajout du walk-in")) return;
+    await loadReservations(state.serviceDate); render();
+    showToast('Walk-in ajouté.');
   };
 }
 
@@ -1226,7 +1268,7 @@ function renderReception(){
               <option value="false" ${r.preauth_allowed===false?'selected':''}>🚫 Préauto refusée</option>
             </select>
           </div>
-          <select data-rcp-table="${r.id}">${tableSelectOptions(r.table_label)}</select>
+          <input type="text" placeholder="Table (numéro libre)" value="${esc(r.table_label||'')}" data-rcp-table="${r.id}">
           <textarea placeholder="Notes / commentaires (ex. anniversaire, allergie...)" data-rcp-notes="${r.id}">${esc(r.notes||'')}</textarea>
           <div class="toggle-row">
             ${r.phone ? `<div style="display:flex; gap:6px;">
@@ -1814,9 +1856,12 @@ function renderManager(){
     } else {
       pending.forEach(c => {
         const mins = Math.max(0, Math.round((Date.now() - new Date(c.created_at).getTime())/60000));
+        const matched = state.reservations.find(r => r.qr_table_number && String(r.qr_table_number) === String(c.table_label) && (r.status === 'arrivee' || r.status === 'attente'));
         html += `<div class="mgr-item call-row">
           <div class="toggle-row">
-            <span>${c.table_label ? `Table <strong>${esc(c.table_label)}</strong>` : 'Table non précisée'} — il y a ${mins} min</span>
+            <span>${c.table_label ? `Table <strong>${esc(c.table_label)}</strong>` : 'Table non précisée'} — il y a ${mins} min
+              ${matched ? `<br><span style="opacity:0.8; font-size:0.85rem;">${matched.vip?'⭐ ':''}${esc(matched.name)} — ${matched.covers} couvert${matched.covers>1?'s':''}</span>` : ''}
+            </span>
             <button class="btn btn-gold btn-small" data-done-call="${c.id}">✓ Traité</button>
           </div>
         </div>`;
