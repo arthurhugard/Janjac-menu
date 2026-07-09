@@ -209,6 +209,13 @@
   .lang-tag{ font-size:0.62rem; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
   .kind-badge{ font-size:0.62rem; text-transform:uppercase; letter-spacing:1px; color:#20180a; background:var(--chalk-dim); border-radius:4px; padding:2px 6px; white-space:nowrap; }
   .kind-badge.boisson{ background:var(--gold); }
+  .slot-capacity-badge{
+    font-size:0.85rem; font-weight:700; padding:5px 12px; border-radius:14px;
+    white-space:nowrap; border:1.5px solid currentColor;
+  }
+  .slot-capacity-badge.free{ color:#8fd19e; background:rgba(143,209,158,0.12); }
+  .slot-capacity-badge.near{ color:var(--gold); background:rgba(227,178,60,0.14); }
+  .slot-capacity-badge.full{ color:var(--rust); background:rgba(193,84,58,0.16); }
   .drag-handle{ cursor:grab; color:var(--chalk-dim); font-size:1.1rem; padding:2px 6px; user-select:none; touch-action:none; }
   .drag-handle:active{ cursor:grabbing; }
   .cat-head-left{ display:flex; align-items:center; gap:6px; }
@@ -275,6 +282,16 @@
   .settings-row input{ width:100%; background:rgba(242,239,227,0.05); border:1px solid var(--line); color:var(--chalk); border-radius:5px; padding:8px 10px; font-size:0.9rem; }
   .qr-box{ text-align:center; padding:10px 0 4px; }
   .qr-box canvas, .qr-box img{ background:#fff; padding:12px; border-radius:8px; }
+  .table-qr-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(130px,1fr)); gap:14px; margin-top:16px; }
+  .table-qr-card{ background:#fff; border-radius:8px; padding:10px; text-align:center; }
+  .table-qr-card canvas, .table-qr-card img{ display:block; margin:0 auto; }
+  .table-qr-label{ color:#182922; font-weight:700; font-family:'Fraunces', serif; margin-top:6px; font-size:0.95rem; }
+  @media print{
+    body *{ visibility:hidden; }
+    #table-qr-grid, #table-qr-grid *{ visibility:visible; }
+    #table-qr-grid{ position:absolute; left:0; top:0; width:100%; grid-template-columns:repeat(3,1fr); gap:24px; padding:20px; }
+    .table-qr-card{ border:1px dashed #ccc; break-inside:avoid; padding:16px; }
+  }
   .legal-footer{ text-align:center; font-size:0.68rem; color:var(--chalk-dim); opacity:0.75; line-height:1.6; margin-bottom:10px; }
   .legal-footer p{ margin:2px 0; }
   .legal-footer .legal-alcohol{ font-weight:600; }
@@ -438,6 +455,37 @@ const LANG_LABEL = { fr:'FR', en:'EN' };
 const LANG_FLAG = { fr:'🇫🇷', en:'🇬🇧' };
 const EXTRA_LANGS = LANGS.filter(l => l !== 'fr'); // used in manager "translations" blocks
 
+// ---------- Rôles ----------
+const ROLE_LABELS = { admin:'Administrateur', reception:'Réception', cuisine:'Cuisine', serveur:'Serveur' };
+const ROLE_PAGES = { admin:['reception','kitchen','service'], reception:['reception'], cuisine:['kitchen'], serveur:['service'] };
+const ROLE_TABS = { admin:['menu','formules','mocktails','appels','qr','reglages'], reception:['qr','reglages'], cuisine:['menu','formules'], serveur:['appels','qr'] };
+const ROLE_LANDING = { admin:'manager', reception:'reception', cuisine:'kitchen', serveur:'service' };
+
+async function loadAccounts(){
+  const { data, error } = await supabase.rpc('list_accounts');
+  if(error){ checkErr(error, "chargement des comptes"); state.accounts = []; return; }
+  state.accounts = data || [];
+}
+
+async function loadMyRole(){
+  const { data: { user } } = await supabase.auth.getUser();
+  if(!user){ state.role = 'admin'; return; }
+  const { data } = await supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle();
+  state.role = (data && data.role) || 'admin';
+}
+
+// Point d'entrée unique vers l'espace gérant : vérifie la session, charge le
+// rôle, charge les données nécessaires, et redirige vers la bonne page.
+async function enterManagerArea(){
+  const { data: { session } } = await supabase.auth.getSession();
+  if(!session){ state.view = 'login'; return; }
+  await loadMyRole();
+  await Promise.all([loadServerCalls(), loadReservations(state.serviceDate)]);
+  const landing = ROLE_LANDING[state.role] || 'manager';
+  if(landing === 'manager'){ state.editingTab = (ROLE_TABS[state.role]||['menu'])[0]; }
+  state.view = landing;
+}
+
 // tr(obj, 'name', 'es')  ->  obj.name_es if present, else obj.name_fr (fallback)
 function tr(obj, field, lang){
   if(!obj) return '';
@@ -462,6 +510,7 @@ const UI = {
   noResults:    { fr:"Aucun résultat pour votre recherche.", en:"No results found.", es:"No se encontraron resultados.", de:"Keine Ergebnisse gefunden." },
   storyTitle:   { fr:"Notre Histoire", en:"Our Story", es:"Nuestra Historia", de:"Unsere Geschichte" },
   callServerBtn:{ fr:"🔔 Appeler un serveur", en:"🔔 Call a waiter", es:"🔔 Llamar a un camarero", de:"🔔 Kellner rufen" },
+  tableLabel:{ fr:"Table", en:"Table", es:"Mesa", de:"Tisch" },
   askTableNumber:{ fr:"Numéro de table (optionnel) :", en:"Table number (optional):", es:"Número de mesa (opcional):", de:"Tischnummer (optional):" },
   callSent:     { fr:"Un serveur a été prévenu, merci de patienter 🙏", en:"A waiter has been notified, thank you for your patience 🙏", es:"Se ha avisado a un camarero, gracias por su paciencia 🙏", de:"Ein Kellner wurde benachrichtigt, danke für Ihre Geduld 🙏" },
   callCooldown: { fr:"Un serveur a déjà été prévenu, merci de patienter.", en:"A waiter has already been notified, please wait.", es:"Ya se ha avisado a un camarero, por favor espere.", de:"Ein Kellner wurde bereits benachrichtigt, bitte warten Sie." },
@@ -531,6 +580,8 @@ let state = {
   lang: detectLang(),
   theme: localStorage.getItem('menuTheme') || 'light',
   langMenuOpen: false,
+  role: null,
+  tableNumber: new URLSearchParams(location.search).get('table') || localStorage.getItem('tableNumber') || '',
   settings: null,
   categories: [],
   items: [],
@@ -538,6 +589,7 @@ let state = {
   mocktailOptions: [],
   serverCalls: [],
   reservations: [],
+  accounts: [],
   serviceDate: new Date().toISOString().slice(0,10),
   reservationSubmitting: false,
   reservationDone: false,
@@ -551,6 +603,12 @@ let state = {
   expandedCats: new Set(),
   expandedItems: new Set(),
 };
+
+// Si l'URL contient ?table=N (QR code d'une table), on la mémorise pour
+// ne plus jamais redemander le numéro de table à ce client.
+if(new URLSearchParams(location.search).get('table')){
+  localStorage.setItem('tableNumber', state.tableNumber);
+}
 
 function applyTheme(){ document.body.classList.toggle('light-theme', state.theme === 'light'); }
 
@@ -629,6 +687,7 @@ function render(){
   if(state.view === 'service') return renderService();
   if(state.view === 'reception') return renderReception();
   if(state.view === 'reservation') return renderReservationPublic();
+  if(state.view === 'accounts') return renderAccounts();
 }
 
 function renderChecking(){
@@ -933,6 +992,13 @@ function elapsedMins(arrivedAt){
   return Math.max(0, Math.round((Date.now() - new Date(arrivedAt).getTime()) / 60000));
 }
 
+function tableSelectOptions(current){
+  const n = state.settings.table_count || 20;
+  let opts = `<option value="">— Table —</option>`;
+  for(let i=1;i<=n;i++){ opts += `<option value="${i}" ${String(current)===String(i)?'selected':''}>${i}</option>`; }
+  return opts;
+}
+
 // ---------- Notification client (SMS pré-rempli, sans service payant) ----------
 function buildThankYouMessage(r){
   const d = new Date(r.reservation_date + 'T00:00:00');
@@ -1013,7 +1079,7 @@ function renderService(){
         </div>
         <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone)}${r.notes ? ` — 📝 ${esc(r.notes)}` : ''}</div>
         <div class="mgr-item-top">
-          <input type="text" class="field-name" placeholder="Table" value="${esc(r.table_label||'')}" data-resa-table="${r.id}">
+          <select class="field-name" data-resa-table="${r.id}">${tableSelectOptions(r.table_label)}</select>
           ${isArrived
             ? `<span class="resa-timer">⏱ ${elapsedMins(r.arrived_at)} min</span>`
             : `<button class="btn btn-gold btn-small" data-resa-arrive="${r.id}">✓ Arrivé</button>`}
@@ -1137,10 +1203,11 @@ function renderReception(){
     const resas = byStatus(s);
     const sum = resas.reduce((a,r)=>a+r.covers,0);
     const full = sum >= maxCap;
+    const capState = sum === 0 ? 'free' : (full ? 'full' : 'near');
     html += `<div class="mgr-cat">
       <div class="mgr-cat-head">
-        <strong>${esc(s)}</strong>
-        <span class="kind-badge ${full ? 'boisson' : ''}">${sum}/${maxCap} couverts</span>
+        <strong style="font-size:1.15rem;">${esc(s)}</strong>
+        <span class="slot-capacity-badge ${capState}">${sum} / ${maxCap} couverts</span>
       </div>`;
     if(resas.length === 0){
       html += `<div class="mgr-hint" style="margin:0;">Aucune réservation sur ce créneau.</div>`;
@@ -1159,7 +1226,7 @@ function renderReception(){
               <option value="false" ${r.preauth_allowed===false?'selected':''}>🚫 Préauto refusée</option>
             </select>
           </div>
-          <input type="text" placeholder="Table (si pré-attribuée)" value="${esc(r.table_label||'')}" data-rcp-table="${r.id}">
+          <select data-rcp-table="${r.id}">${tableSelectOptions(r.table_label)}</select>
           <textarea placeholder="Notes / commentaires (ex. anniversaire, allergie...)" data-rcp-notes="${r.id}">${esc(r.notes||'')}</textarea>
           <div class="toggle-row">
             ${r.phone ? `<div style="display:flex; gap:6px;">
@@ -1271,6 +1338,42 @@ function renderReception(){
     await loadReservations(state.serviceDate); render();
     showToast('Réservation ajoutée.');
   };
+}
+
+// ---------- COMPTES (admin uniquement) ----------
+function renderAccounts(){
+  let html = `<div class="frame mgr-frame">
+    <div class="mgr-header">
+      <div class="mgr-title">👤 Comptes</div>
+      <button class="btn btn-small" id="acc-back">← Retour</button>
+    </div>
+    <p class="mgr-hint">Créez les comptes depuis Supabase (Authentication → Users → Add user), puis choisissez leur rôle ici. Un compte sans rôle défini reste Administrateur (accès complet).</p>`;
+
+  if(state.accounts.length === 0){
+    html += `<div class="empty-note">Aucun compte trouvé.</div>`;
+  } else {
+    html += `<div class="resa-row-grid">`;
+    state.accounts.forEach(a => {
+      html += `<div class="mgr-item">
+        <div class="mgr-item-summary">${esc(a.email)}</div>
+        <select data-acc-role="${a.id}">
+          ${Object.keys(ROLE_LABELS).map(r => `<option value="${r}" ${a.role===r?'selected':''}>${ROLE_LABELS[r]}</option>`).join('')}
+        </select>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  app.innerHTML = html;
+
+  document.getElementById('acc-back').onclick = () => { state.view = 'manager'; render(); };
+  document.querySelectorAll('[data-acc-role]').forEach(sel => sel.onchange = async () => {
+    const { error } = await supabase.rpc('set_account_role', { target_user_id: sel.dataset.accRole, new_role: sel.value });
+    if(!checkErr(error, "attribution du rôle")) return;
+    showToast('Rôle mis à jour.');
+    await loadAccounts(); render();
+  });
 }
 
 // ---------- CUSTOMER MENU ----------
@@ -1389,7 +1492,7 @@ function renderMenu(){
     <p class="legal-alcohol">⚠️ ${esc(t('legalAlcohol', L))}</p>
   </div>
   <div class="footer-link"><a id="mgr-link">${esc(t('managerArea', L))}</a></div></div>
-  <button class="call-server-btn" id="call-server-btn">${esc(t('callServerBtn', L))}</button>`;
+  <button class="call-server-btn" id="call-server-btn">${esc(t('callServerBtn', L))}${state.tableNumber ? ` · ${esc(t('tableLabel', L))} ${esc(state.tableNumber)}` : ''}</button>`;
   app.innerHTML = html;
   document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { state.lang = b.dataset.lang; state.langMenuOpen = false; localStorage.setItem('menuLang', state.lang); render(); });
   document.getElementById('lang-current-btn').onclick = (e) => { e.stopPropagation(); state.langMenuOpen = !state.langMenuOpen; render(); };
@@ -1430,17 +1533,19 @@ function renderMenu(){
   });
   document.getElementById('mgr-link').onclick = async () => {
     location.hash = 'gestion';
-    const { data: { session } } = await supabase.auth.getSession();
-    state.view = session ? 'manager' : 'login';
-    if(session) await loadServerCalls();
+    await enterManagerArea();
     render();
   };
   const callBtn = document.getElementById('call-server-btn');
   callBtn.onclick = async () => {
-    const tableLabel = window.prompt(t('askTableNumber', L));
-    if(tableLabel === null) return;
+    let tableLabel = state.tableNumber;
+    if(!tableLabel){
+      tableLabel = window.prompt(t('askTableNumber', L));
+      if(tableLabel === null) return;
+      tableLabel = tableLabel.trim();
+    }
     callBtn.disabled = true;
-    const { error } = await supabase.from('server_calls').insert({ table_label: tableLabel.trim() });
+    const { error } = await supabase.from('server_calls').insert({ table_label: tableLabel });
     if(error){ checkErr(error, "appel du serveur"); callBtn.disabled = false; return; }
     showToast(t('callSent', L));
     setTimeout(() => { const b = document.getElementById('call-server-btn'); if(b) b.disabled = false; }, 60000);
@@ -1468,8 +1573,7 @@ function renderLogin(){
     const pass = document.getElementById('pass-field').value;
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
     if(error){ state.loginError = 'Identifiants incorrects.'; render(); return; }
-    state.view = 'manager';
-    await loadServerCalls();
+    await enterManagerArea();
     render();
   };
   document.getElementById('login-submit').onclick = submit;
@@ -1595,24 +1699,30 @@ function renderItemEditor(it, cat){
 
 function renderManager(){
   const pendingCalls = state.serverCalls.filter(c => c.status === 'pending').length;
+  const role = state.role || 'admin';
+  const pages = ROLE_PAGES[role] || [];
+  const tabs = ROLE_TABS[role] || [];
+  if(!tabs.includes(state.editingTab)) state.editingTab = tabs[0] || 'menu';
+
   let html = `<div class="frame mgr-frame">
     <div class="mgr-header">
       <div class="mgr-title">Gestion de la carte</div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="btn btn-small" id="reception-btn">📖 Réception</button>
-        <button class="btn btn-small" id="kitchen-btn">📦 Stock cuisine</button>
-        <button class="btn btn-small" id="service-btn">🛎 Service</button>
+        ${pages.includes('reception') ? `<button class="btn btn-small" id="reception-btn">📖 Réception</button>` : ''}
+        ${pages.includes('kitchen') ? `<button class="btn btn-small" id="kitchen-btn">📦 Stock cuisine</button>` : ''}
+        ${pages.includes('service') ? `<button class="btn btn-small" id="service-btn">🛎 Service</button>` : ''}
+        ${role === 'admin' ? `<button class="btn btn-small" id="accounts-btn">👤 Comptes</button>` : ''}
         <button class="btn btn-small" id="exit-btn">Voir la carte</button>
         <button class="btn btn-small btn-rust" id="logout-btn">Déconnexion</button>
       </div>
     </div>
     <div class="tabs">
-      <div class="tab ${state.editingTab==='menu'?'active':''}" data-tab="menu">Carte</div>
-      <div class="tab ${state.editingTab==='formules'?'active':''}" data-tab="formules">Formules</div>
-      <div class="tab ${state.editingTab==='mocktails'?'active':''}" data-tab="mocktails">Mocktails</div>
-      <div class="tab ${state.editingTab==='appels'?'active':''}" data-tab="appels">Appels${pendingCalls ? ` <span class="tab-badge">${pendingCalls}</span>` : ''}</div>
-      <div class="tab ${state.editingTab==='qr'?'active':''}" data-tab="qr">QR code</div>
-      <div class="tab ${state.editingTab==='reglages'?'active':''}" data-tab="reglages">Réglages</div>
+      ${tabs.includes('menu') ? `<div class="tab ${state.editingTab==='menu'?'active':''}" data-tab="menu">Carte</div>` : ''}
+      ${tabs.includes('formules') ? `<div class="tab ${state.editingTab==='formules'?'active':''}" data-tab="formules">Formules</div>` : ''}
+      ${tabs.includes('mocktails') ? `<div class="tab ${state.editingTab==='mocktails'?'active':''}" data-tab="mocktails">Mocktails</div>` : ''}
+      ${tabs.includes('appels') ? `<div class="tab ${state.editingTab==='appels'?'active':''}" data-tab="appels">Appels${pendingCalls ? ` <span class="tab-badge">${pendingCalls}</span>` : ''}</div>` : ''}
+      ${tabs.includes('qr') ? `<div class="tab ${state.editingTab==='qr'?'active':''}" data-tab="qr">QR code</div>` : ''}
+      ${tabs.includes('reglages') ? `<div class="tab ${state.editingTab==='reglages'?'active':''}" data-tab="reglages">Réglages</div>` : ''}
     </div>`;
 
   if(state.editingTab === 'menu'){
@@ -1718,9 +1828,18 @@ function renderManager(){
     const link = location.origin + location.pathname;
     html += `<div class="qr-box">
       <div id="qr-canvas"></div>
-      <p style="color:var(--chalk-dim); font-size:0.8rem; margin-top:12px;">Imprimez ce QR code sur vos tables.</p>
+      <p style="color:var(--chalk-dim); font-size:0.8rem; margin-top:12px;">QR code général de la carte (entrée, flyers...).</p>
       <div class="link-row"><input type="text" readonly value="${esc(link)}" id="link-field"><button class="btn btn-small" id="copy-link">Copier</button></div>
-    </div>`;
+    </div>
+    <div class="divider"></div>
+    <div class="mgr-subhead">🔢 QR codes numérotés par table</div>
+    <p class="mgr-hint">Un QR code par table (à imprimer et coller dessus). Quand un client scanne le QR code de sa table, "Appeler un serveur" envoie directement son numéro de table, sans lui demander de le taper.</p>
+    <div class="settings-row"><label>Nombre de tables</label><input type="number" id="table-count-input" min="1" value="${state.settings.table_count||20}"></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn btn-gold btn-small" id="gen-table-qrs-btn">Générer les QR codes</button>
+      <button class="btn btn-small" id="print-table-qrs-btn" style="display:none;">🖨 Imprimer</button>
+    </div>
+    <div id="table-qr-grid" class="table-qr-grid"></div>`;
   }
 
   if(state.editingTab === 'reglages'){
@@ -1791,15 +1910,24 @@ function setupSortable(){
 
 function bindManagerEvents(){
   document.getElementById('exit-btn').onclick = () => { location.hash=''; state.view='menu'; render(); };
-  document.getElementById('reception-btn').onclick = async () => {
+  const receptionBtn = document.getElementById('reception-btn');
+  if(receptionBtn) receptionBtn.onclick = async () => {
     await loadReservations(state.serviceDate);
     state.view = 'reception';
     render();
   };
-  document.getElementById('kitchen-btn').onclick = () => { state.view = 'kitchen'; render(); };
-  document.getElementById('service-btn').onclick = async () => {
+  const kitchenBtn = document.getElementById('kitchen-btn');
+  if(kitchenBtn) kitchenBtn.onclick = () => { state.view = 'kitchen'; render(); };
+  const serviceBtn = document.getElementById('service-btn');
+  if(serviceBtn) serviceBtn.onclick = async () => {
     await Promise.all([loadServerCalls(), loadReservations(state.serviceDate)]);
     state.view = 'service';
+    render();
+  };
+  const accountsBtn = document.getElementById('accounts-btn');
+  if(accountsBtn) accountsBtn.onclick = async () => {
+    await loadAccounts();
+    state.view = 'accounts';
     render();
   };
   document.getElementById('logout-btn').onclick = async () => { await supabase.auth.signOut(); location.hash=''; state.view='menu'; render(); };
@@ -1965,6 +2093,31 @@ function bindManagerEvents(){
     const link = location.origin + location.pathname;
     new QRCode(document.getElementById('qr-canvas'), { text: link, width: 180, height: 180, colorDark:'#182922', colorLight:'#ffffff' });
     document.getElementById('copy-link').onclick = () => navigator.clipboard.writeText(link).then(()=>showToast('Lien copié !'));
+
+    document.getElementById('gen-table-qrs-btn').onclick = async () => {
+      const n = Math.max(1, parseInt(document.getElementById('table-count-input').value, 10) || 20);
+      const { error } = await supabase.from('restaurant_settings').update({ table_count: n }).eq('id', 1);
+      if(!checkErr(error, "enregistrement du nombre de tables")) return;
+      const grid = document.getElementById('table-qr-grid');
+      grid.innerHTML = '';
+      for(let i=1;i<=n;i++){
+        const card = document.createElement('div');
+        card.className = 'table-qr-card';
+        const qrDiv = document.createElement('div');
+        card.appendChild(qrDiv);
+        const label = document.createElement('div');
+        label.className = 'table-qr-label';
+        label.textContent = 'Table ' + i;
+        card.appendChild(label);
+        grid.appendChild(card);
+        new QRCode(qrDiv, { text: `${link}?table=${i}`, width: 110, height: 110, colorDark:'#182922', colorLight:'#ffffff' });
+      }
+      document.getElementById('print-table-qrs-btn').style.display = 'inline-block';
+      await loadAll();
+      showToast(`${n} QR codes générés.`);
+    };
+    const printBtn = document.getElementById('print-table-qrs-btn');
+    if(printBtn) printBtn.onclick = () => window.print();
   }
 
   if(state.editingTab === 'reglages'){
@@ -2028,9 +2181,7 @@ function subscribeRealtime(){
 
 window.addEventListener('hashchange', async () => {
   if(location.hash === '#gestion' && (state.view === 'menu' || state.view === 'reservation')){
-    const { data: { session } } = await supabase.auth.getSession();
-    state.view = session ? 'manager' : 'login';
-    if(session) await loadServerCalls();
+    await enterManagerArea();
     render();
   } else if(location.hash === '#reservation' && state.view !== 'reservation'){
     state.view = 'reservation';
@@ -2045,9 +2196,7 @@ window.addEventListener('hashchange', async () => {
   applyTheme();
   await loadAll();
   if(state.view === 'checking'){
-    const { data: { session } } = await supabase.auth.getSession();
-    state.view = session ? 'manager' : 'login';
-    if(session) await loadServerCalls();
+    await enterManagerArea();
   }
   render();
   subscribeRealtime();
