@@ -216,6 +216,11 @@
   .slot-capacity-badge.free{ color:#8fd19e; background:rgba(143,209,158,0.12); }
   .slot-capacity-badge.near{ color:var(--gold); background:rgba(227,178,60,0.14); }
   .slot-capacity-badge.full{ color:var(--rust); background:rgba(193,84,58,0.16); }
+  .big-cta-btn{
+    display:block; width:100%; font-size:1.15rem; font-weight:700; padding:18px 20px;
+    border-radius:12px; margin:4px 0 18px; box-shadow:0 6px 18px rgba(227,178,60,0.25);
+  }
+  @media (min-width:680px){ .big-cta-btn{ font-size:1.3rem; padding:20px 24px; } }
   .drag-handle{ cursor:grab; color:var(--chalk-dim); font-size:1.1rem; padding:2px 6px; user-select:none; touch-action:none; }
   .drag-handle:active{ cursor:grabbing; }
   .cat-head-left{ display:flex; align-items:center; gap:6px; }
@@ -594,6 +599,8 @@ let state = {
   reservationSubmitting: false,
   reservationDone: false,
   reservationModalOpen: false,
+  rcpNewOpen: false,
+  svcNewOpen: false,
   editingTab: 'menu',
   loginError: '',
   searchQuery: '',
@@ -1045,6 +1052,7 @@ function renderService(){
         <button class="btn btn-small" id="svc-back">← Retour</button>
       </div>
     </div>
+    <button class="btn btn-gold big-cta-btn" id="svc-new-open">➕ Nouvelle réservation</button>
 
     <div class="mgr-subhead">🔔 Appels en attente ${pending.length ? `<span class="tab-badge">${pending.length}</span>` : ''}</div>`;
 
@@ -1113,20 +1121,6 @@ function renderService(){
     html += `</div>`;
   }
 
-  html += `<details class="translations-block" style="margin-top:12px;">
-    <summary>+ Nouvelle réservation</summary>
-    <div class="lang-group">
-      <div class="settings-row"><label>Créneau horaire</label>
-        <select id="svc-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
-      </div>
-      <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="svc-new-covers" min="1" value="2"></div>
-      <div class="settings-row"><label>Nom</label><input type="text" id="svc-new-name"></div>
-      <div class="settings-row"><label>Téléphone</label><input type="tel" id="svc-new-phone"></div>
-      <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="svc-new-room"></div>
-      <button class="btn btn-gold btn-small" id="svc-new-submit">Ajouter la réservation</button>
-    </div>
-  </details>`;
-
   if(history.length > 0){
     html += `<details class="translations-block" style="margin-top:12px;">
       <summary>Historique du jour (${history.length})</summary>`;
@@ -1137,10 +1131,34 @@ function renderService(){
   }
 
   html += `</div>`;
+
+  if(state.svcNewOpen){
+    html += `<div class="resa-modal-overlay" id="svc-new-overlay">
+      <div class="resa-modal">
+        <button class="resa-modal-close" id="svc-new-close">✕</button>
+        <h3>➕ Nouvelle réservation</h3>
+        <div class="settings-row"><label>Créneau horaire</label>
+          <select id="svc-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+        </div>
+        <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="svc-new-covers" min="1" value="2"></div>
+        <div class="settings-row"><label>Nom</label><input type="text" id="svc-new-name"></div>
+        <div class="settings-row"><label>Téléphone</label><input type="tel" id="svc-new-phone"></div>
+        <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="svc-new-room"></div>
+        <button class="btn btn-gold" id="svc-new-submit" style="width:100%; margin-top:12px;">Ajouter la réservation</button>
+      </div>
+    </div>`;
+  }
+
   app.innerHTML = html;
 
   document.getElementById('svc-back').onclick = () => { clearInterval(serviceRefreshTimer); state.view = 'manager'; render(); };
   document.getElementById('svc-enable-push').onclick = subscribeToPush;
+  document.getElementById('svc-new-open').onclick = () => { state.svcNewOpen = true; render(); };
+  const svcCloseModal = () => { state.svcNewOpen = false; render(); };
+  const svcNewClose = document.getElementById('svc-new-close');
+  if(svcNewClose) svcNewClose.onclick = svcCloseModal;
+  const svcOverlay = document.getElementById('svc-new-overlay');
+  if(svcOverlay) svcOverlay.addEventListener('click', (e) => { if(e.target === svcOverlay) svcCloseModal(); });
   document.getElementById('svc-date').onchange = async (e) => {
     state.serviceDate = e.target.value;
     await loadReservations(state.serviceDate);
@@ -1187,7 +1205,8 @@ function renderService(){
     const r = state.reservations.find(x => x.id === btn.dataset.resaCopy);
     if(r) copyThankYouMessage(r);
   });
-  document.getElementById('svc-new-submit').onclick = async () => {
+  const svcNewSubmit = document.getElementById('svc-new-submit');
+  if(svcNewSubmit) svcNewSubmit.onclick = async () => {
     const payload = {
       reservation_date: state.serviceDate,
       time_slot: document.getElementById('svc-new-slot').value,
@@ -1199,6 +1218,7 @@ function renderService(){
     if(!payload.name){ showToast('Merci de renseigner un nom.'); return; }
     const { error } = await supabase.from('reservations').insert(payload);
     if(!checkErr(error, "ajout de la réservation")) return;
+    state.svcNewOpen = false;
     await loadReservations(state.serviceDate); render();
     showToast('Réservation ajoutée.');
   };
@@ -1238,6 +1258,7 @@ function renderReception(){
       <div class="mgr-title">📖 Réception</div>
       <button class="btn btn-small" id="rcp-back">← Retour</button>
     </div>
+    <button class="btn btn-gold big-cta-btn" id="rcp-new-open">➕ Nouvelle réservation</button>
     <div class="settings-row"><label>Date</label><input type="date" id="rcp-date" value="${state.serviceDate}"></div>
     <div class="mgr-cat-grid">`;
 
@@ -1284,29 +1305,6 @@ function renderReception(){
   });
   html += `</div>`;
 
-  html += `<details class="translations-block">
-    <summary>+ Nouvelle réservation</summary>
-    <div class="lang-group">
-      <div class="settings-row"><label>Créneau horaire</label>
-        <select id="rcp-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
-      </div>
-      <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="rcp-new-covers" min="1" value="2"></div>
-      <div class="settings-row"><label>Nom</label><input type="text" id="rcp-new-name"></div>
-      <div class="settings-row"><label>Téléphone</label><input type="tel" id="rcp-new-phone"></div>
-      <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="rcp-new-room"></div>
-      <div class="settings-row"><label>Notes / commentaires</label><input type="text" id="rcp-new-notes" placeholder="ex. VIP, anniversaire, allergie..."></div>
-      <div class="mgr-item-top">
-        <label class="toggle" style="flex:1;"><input type="checkbox" id="rcp-new-vip" style="width:auto;"> VIP</label>
-        <select id="rcp-new-preauth" style="flex:2;">
-          <option value="null">❔ Préauto non définie</option>
-          <option value="true">✅ Préauto autorisée</option>
-          <option value="false">🚫 Préauto refusée</option>
-        </select>
-      </div>
-      <button class="btn btn-gold btn-small" id="rcp-new-submit" style="margin-top:8px;">Ajouter la réservation</button>
-    </div>
-  </details>`;
-
   if(cancelled.length > 0){
     html += `<details class="translations-block" style="margin-top:12px;">
       <summary>Annulées (${cancelled.length})</summary>`;
@@ -1317,9 +1315,42 @@ function renderReception(){
   }
 
   html += `</div>`;
+
+  if(state.rcpNewOpen){
+    html += `<div class="resa-modal-overlay" id="rcp-new-overlay">
+      <div class="resa-modal">
+        <button class="resa-modal-close" id="rcp-new-close">✕</button>
+        <h3>➕ Nouvelle réservation</h3>
+        <div class="settings-row"><label>Créneau horaire</label>
+          <select id="rcp-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+        </div>
+        <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="rcp-new-covers" min="1" value="2"></div>
+        <div class="settings-row"><label>Nom</label><input type="text" id="rcp-new-name"></div>
+        <div class="settings-row"><label>Téléphone</label><input type="tel" id="rcp-new-phone"></div>
+        <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="rcp-new-room"></div>
+        <div class="settings-row"><label>Notes / commentaires</label><input type="text" id="rcp-new-notes" placeholder="ex. VIP, anniversaire, allergie..."></div>
+        <div class="mgr-item-top">
+          <label class="toggle" style="flex:1;"><input type="checkbox" id="rcp-new-vip" style="width:auto;"> VIP</label>
+          <select id="rcp-new-preauth" style="flex:2;">
+            <option value="null">❔ Préauto non définie</option>
+            <option value="true">✅ Préauto autorisée</option>
+            <option value="false">🚫 Préauto refusée</option>
+          </select>
+        </div>
+        <button class="btn btn-gold" id="rcp-new-submit" style="width:100%; margin-top:12px;">Ajouter la réservation</button>
+      </div>
+    </div>`;
+  }
+
   app.innerHTML = html;
 
   document.getElementById('rcp-back').onclick = () => { state.view = 'manager'; render(); };
+  document.getElementById('rcp-new-open').onclick = () => { state.rcpNewOpen = true; render(); };
+  const rcpCloseModal = () => { state.rcpNewOpen = false; render(); };
+  const rcpNewClose = document.getElementById('rcp-new-close');
+  if(rcpNewClose) rcpNewClose.onclick = rcpCloseModal;
+  const rcpOverlay = document.getElementById('rcp-new-overlay');
+  if(rcpOverlay) rcpOverlay.addEventListener('click', (e) => { if(e.target === rcpOverlay) rcpCloseModal(); });
   document.getElementById('rcp-date').onchange = async (e) => {
     state.serviceDate = e.target.value;
     await loadReservations(state.serviceDate);
@@ -1361,7 +1392,8 @@ function renderReception(){
     if(!checkErr(error, "annulation de la réservation")) return;
     await loadReservations(state.serviceDate); render();
   });
-  document.getElementById('rcp-new-submit').onclick = async () => {
+  const rcpNewSubmit = document.getElementById('rcp-new-submit');
+  if(rcpNewSubmit) rcpNewSubmit.onclick = async () => {
     const preauthSel = document.getElementById('rcp-new-preauth').value;
     const payload = {
       reservation_date: state.serviceDate,
@@ -1377,6 +1409,7 @@ function renderReception(){
     if(!payload.name){ showToast('Merci de renseigner un nom.'); return; }
     const { error } = await supabase.from('reservations').insert(payload);
     if(!checkErr(error, "ajout de la réservation")) return;
+    state.rcpNewOpen = false;
     await loadReservations(state.serviceDate); render();
     showToast('Réservation ajoutée.');
   };
