@@ -220,7 +220,42 @@
     display:block; width:100%; font-size:1.15rem; font-weight:700; padding:18px 20px;
     border-radius:12px; margin:4px 0 18px; box-shadow:0 6px 18px rgba(227,178,60,0.25);
   }
+  .big-cta-row{ display:flex; gap:10px; }
+  .big-cta-row .big-cta-btn{ flex:1; }
   @media (min-width:680px){ .big-cta-btn{ font-size:1.3rem; padding:20px 24px; } }
+  .qr-scan-video-wrap{ border-radius:10px; overflow:hidden; background:#000; aspect-ratio:1/1; max-width:320px; margin:0 auto; }
+  .qr-scan-video-wrap video{ width:100%; height:100%; object-fit:cover; display:block; }
+  .qr-scan-btn{
+    background:transparent; border:1.5px solid var(--gold); color:var(--gold); border-radius:8px;
+    padding:8px 12px; font-size:1.1rem; cursor:pointer; line-height:1;
+  }
+  .new-badge{
+    display:inline-block; background:var(--rust); color:#fff; font-size:0.68rem; font-weight:700;
+    padding:2px 7px; border-radius:10px; letter-spacing:0.5px; vertical-align:middle;
+  }
+  .draft-banner{
+    background:rgba(227,178,60,0.14); border:1.5px solid var(--gold); color:var(--gold);
+    border-radius:8px; padding:10px 14px; font-size:0.85rem; margin-bottom:14px; font-weight:600;
+  }
+  .stats-bars{ display:flex; flex-direction:column; gap:8px; margin:10px 0 16px; }
+  .stats-bar-row{ display:flex; align-items:center; gap:10px; font-size:0.85rem; }
+  .stats-bar-label{ width:70px; flex-shrink:0; color:var(--chalk-dim); }
+  .stats-bar-track{ flex:1; height:16px; background:rgba(242,239,227,0.08); border-radius:8px; overflow:hidden; }
+  .stats-bar-fill{ height:100%; background:var(--gold); border-radius:8px; transition:width .3s; }
+  .stats-bar-fill.free{ background:rgba(242,239,227,0.12); }
+  .stats-bar-fill.full{ background:var(--rust); }
+  .stats-bar-value{ width:38px; text-align:right; flex-shrink:0; font-weight:600; }
+  .order-modal{ max-width:480px; }
+  .order-items-list{ max-height:50vh; overflow-y:auto; margin:10px 0; }
+  .order-cat-name{ font-family:'Caveat', cursive; color:var(--gold); font-size:1.2rem; margin:10px 0 4px; }
+  .order-item-row{ display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); gap:10px; }
+  .order-item-name{ font-size:0.9rem; flex:1; }
+  .order-qty-controls{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .order-qty-controls button{
+    width:30px; height:30px; border-radius:50%; border:1.5px solid var(--gold); background:transparent;
+    color:var(--gold); font-size:1.1rem; cursor:pointer; line-height:1;
+  }
+  .order-qty-value{ min-width:18px; text-align:center; font-weight:700; }
   .drag-handle{ cursor:grab; color:var(--chalk-dim); font-size:1.1rem; padding:2px 6px; user-select:none; touch-action:none; }
   .drag-handle:active{ cursor:grabbing; }
   .cat-head-left{ display:flex; align-items:center; gap:6px; }
@@ -462,7 +497,7 @@ const EXTRA_LANGS = LANGS.filter(l => l !== 'fr'); // used in manager "translati
 
 // ---------- Rôles ----------
 const ROLE_LABELS = { admin:'Administrateur', reception:'Réception', cuisine:'Cuisine', serveur:'Serveur' };
-const ROLE_PAGES = { admin:['reception','kitchen','service'], reception:['reception'], cuisine:['kitchen'], serveur:['service'] };
+const ROLE_PAGES = { admin:['reception','kitchen','service','stats'], reception:['reception','stats'], cuisine:['kitchen'], serveur:['service'] };
 const ROLE_TABS = { admin:['menu','formules','mocktails','appels','qr','reglages'], reception:['qr','reglages'], cuisine:['menu','formules'], serveur:['appels','qr'] };
 const ROLE_LANDING = { admin:'manager', reception:'reception', cuisine:'kitchen', serveur:'service' };
 
@@ -594,6 +629,7 @@ let state = {
   mocktailOptions: [],
   serverCalls: [],
   reservations: [],
+  statsData: [],
   accounts: [],
   serviceDate: new Date().toISOString().slice(0,10),
   reservationSubmitting: false,
@@ -601,6 +637,7 @@ let state = {
   reservationModalOpen: false,
   rcpNewOpen: false,
   svcNewOpen: false,
+  svcWalkinOpen: false,
   editingTab: 'menu',
   loginError: '',
   searchQuery: '',
@@ -609,6 +646,7 @@ let state = {
   excludedAllergens: [],
   expandedCats: new Set(),
   expandedItems: new Set(),
+  expandedResaRows: new Set(),
 };
 
 // Si l'URL contient ?table=N (QR code d'une table), on la mémorise pour
@@ -659,9 +697,30 @@ async function loadServerCalls(){
   if(!error) state.serverCalls = data || [];
 }
 
+async function loadStatsData(){
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - 6);
+  const startStr = start.toISOString().slice(0,10);
+  const endStr = end.toISOString().slice(0,10);
+  const { data, error } = await supabase.from('reservations')
+    .select('reservation_date,time_slot,covers,status,is_walkin')
+    .gte('reservation_date', startStr).lte('reservation_date', endStr);
+  if(!error) state.statsData = data || [];
+}
+
 async function loadReservations(date){
   const { data, error } = await supabase.from('reservations').select('*').eq('reservation_date', date).order('time_slot', { ascending: true });
   if(!error) state.reservations = data || [];
+}
+
+// Marque comme "vues" les réservations actuellement affichées (badge "🆕 nouveau")
+// — appelé juste après l'affichage, donc le badge a le temps d'être vu au moins une fois.
+async function markReservationsSeen(){
+  const unseenIds = state.reservations.filter(r => !r.seen_at).map(r => r.id);
+  if(unseenIds.length === 0) return;
+  await supabase.from('reservations').update({ seen_at: new Date().toISOString() }).in('id', unseenIds);
+  unseenIds.forEach(id => { const r = state.reservations.find(x => x.id === id); if(r) r.seen_at = new Date().toISOString(); });
 }
 
 function itemsFor(catId){ return state.items.filter(i => i.category_id === catId); }
@@ -695,6 +754,7 @@ function render(){
   if(state.view === 'reception') return renderReception();
   if(state.view === 'reservation') return renderReservationPublic();
   if(state.view === 'accounts') return renderAccounts();
+  if(state.view === 'stats') return renderStats();
 }
 
 function renderChecking(){
@@ -999,6 +1059,188 @@ function elapsedMins(arrivedAt){
   return Math.max(0, Math.round((Date.now() - new Date(arrivedAt).getTime()) / 60000));
 }
 
+// ---------- Prise de commande cuisine ----------
+let orderDraft = {}; // { itemId: quantity }
+
+function buildTicketText(r, itemsPayload, notes){
+  const now = new Date();
+  const time = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+  const restaurantName = (state.settings.name_fr || 'RESTAURANT').toUpperCase();
+  const tableRef = r && (r.qr_table_number || r.table_label) ? (r.qr_table_number || r.table_label) : '—';
+  let lines = [];
+  lines.push('================================');
+  lines.push(`   ${restaurantName} - CUISINE`);
+  lines.push('================================');
+  lines.push(`Table : ${tableRef}`);
+  lines.push(`Heure : ${time}`);
+  if(r) lines.push(`Client : ${r.name || ''} (${r.covers} couv.)`);
+  lines.push('--------------------------------');
+  itemsPayload.forEach(it => { lines.push(`${it.quantity}x  ${it.item_name}`); });
+  if(notes){ lines.push('--------------------------------'); lines.push(`Notes : ${notes}`); }
+  lines.push('================================');
+  return lines.join('\n');
+}
+
+function openOrderModal(resaId){
+  orderDraft = {};
+  const r = state.reservations.find(x => x.id === resaId);
+  const overlay = document.createElement('div');
+  overlay.className = 'resa-modal-overlay';
+  overlay.id = 'order-modal-overlay';
+  overlay.innerHTML = `
+    <div class="resa-modal order-modal">
+      <button class="resa-modal-close" id="order-modal-close">✕</button>
+      <h3>🖨 Commande${r ? ` — ${esc(r.name)}${r.table_label || r.qr_table_number ? ' (Table '+esc(r.qr_table_number || r.table_label)+')' : ''}` : ''}</h3>
+      <div id="order-items-list" class="order-items-list"></div>
+      <div class="settings-row"><label>Notes pour la cuisine</label><input type="text" id="order-notes" placeholder="ex. sans gluten, urgent..."></div>
+      <button class="btn btn-gold" id="order-send-btn" style="width:100%; margin-top:10px;">🖨 Envoyer en cuisine</button>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const renderOrderItems = () => {
+    const list = overlay.querySelector('#order-items-list');
+    let html = '';
+    foodCats().forEach(cat => {
+      const items = itemsFor(cat.id).filter(i => !i.out_of_stock);
+      if(items.length === 0) return;
+      html += `<div class="order-cat-name">${esc(cat.name_fr)}</div>`;
+      items.forEach(it => {
+        const qty = orderDraft[it.id] || 0;
+        html += `<div class="order-item-row">
+          <span class="order-item-name">${esc(it.name_fr)}</span>
+          <div class="order-qty-controls">
+            <button type="button" data-order-dec="${it.id}">–</button>
+            <span class="order-qty-value">${qty}</span>
+            <button type="button" data-order-inc="${it.id}">+</button>
+          </div>
+        </div>`;
+      });
+    });
+    list.innerHTML = html || `<div class="empty-note">Aucun plat disponible.</div>`;
+    list.querySelectorAll('[data-order-inc]').forEach(btn => btn.onclick = () => {
+      orderDraft[btn.dataset.orderInc] = (orderDraft[btn.dataset.orderInc]||0) + 1;
+      renderOrderItems();
+    });
+    list.querySelectorAll('[data-order-dec]').forEach(btn => btn.onclick = () => {
+      const id = btn.dataset.orderDec;
+      orderDraft[id] = Math.max(0, (orderDraft[id]||0) - 1);
+      renderOrderItems();
+    });
+  };
+  renderOrderItems();
+
+  const cleanup = () => overlay.remove();
+  overlay.querySelector('#order-modal-close').onclick = cleanup;
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) cleanup(); });
+
+  overlay.querySelector('#order-send-btn').onclick = async () => {
+    const chosen = Object.entries(orderDraft).filter(([id,qty]) => qty > 0);
+    if(chosen.length === 0){ showToast('Sélectionnez au moins un plat.'); return; }
+    const notes = overlay.querySelector('#order-notes').value.trim();
+
+    const { data: orderRow, error: orderErr } = await supabase.from('orders').insert({
+      reservation_id: resaId,
+      table_label: r ? String(r.qr_table_number || r.table_label || '') : '',
+      notes,
+    }).select().single();
+    if(orderErr){ checkErr(orderErr, "création de la commande"); return; }
+
+    const itemsPayload = chosen.map(([id,qty]) => {
+      const it = state.items.find(i => i.id === id);
+      return { order_id: orderRow.id, item_name: it ? it.name_fr : '?', quantity: qty };
+    });
+    const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+    if(itemsErr){ checkErr(itemsErr, "ajout des plats à la commande"); return; }
+
+    const ticketText = buildTicketText(r, itemsPayload, notes);
+    const { error: printErr } = await supabase.from('print_jobs').insert({
+      order_id: orderRow.id, raw_text: ticketText, printer_ip: state.settings.kitchen_printer_ip || '',
+    });
+    if(printErr){ checkErr(printErr, "mise en file d'impression"); return; }
+
+    showToast('Commande envoyée en cuisine.');
+    cleanup();
+  };
+}
+
+// Scanner caméra pour attribuer un QR code de table à une réservation.
+// Géré en dehors du cycle de render() pour ne pas couper le flux vidéo
+// à chaque rafraîchissement de l'écran.
+async function openQrScanner(resaId){
+  const overlay = document.createElement('div');
+  overlay.className = 'resa-modal-overlay';
+  overlay.id = 'qr-scan-overlay';
+  overlay.innerHTML = `
+    <div class="resa-modal">
+      <button class="resa-modal-close" id="qr-scan-close">✕</button>
+      <h3>📷 Scanner le QR code</h3>
+      <div class="qr-scan-video-wrap"><video id="qr-scan-video" playsinline autoplay muted></video></div>
+      <p class="mgr-hint" id="qr-scan-status">Visez le QR code posé sur la table…</p>
+      <div class="divider"></div>
+      <div class="settings-row"><label>Ou entrez le numéro manuellement</label>
+        <input type="number" id="qr-scan-manual" min="1" max="${state.settings.table_count||20}">
+      </div>
+      <button class="btn btn-gold" id="qr-scan-manual-submit" style="width:100%;">Valider</button>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  let stream = null;
+  let rafId = null;
+  let done = false;
+  const video = overlay.querySelector('#qr-scan-video');
+  const statusEl = overlay.querySelector('#qr-scan-status');
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  const cleanup = () => {
+    if(rafId) cancelAnimationFrame(rafId);
+    if(stream) stream.getTracks().forEach(t => t.stop());
+    overlay.remove();
+  };
+
+  const finish = async (n) => {
+    if(done) return;
+    done = true;
+    cleanup();
+    const { error } = await supabase.from('reservations').update({ qr_table_number: n }).eq('id', resaId);
+    if(!checkErr(error, "attribution du QR code")) return;
+    await loadReservations(state.serviceDate); render();
+    showToast(`QR n°${n} associé.`);
+  };
+
+  overlay.querySelector('#qr-scan-close').onclick = cleanup;
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) cleanup(); });
+  overlay.querySelector('#qr-scan-manual-submit').onclick = () => {
+    const val = parseInt(overlay.querySelector('#qr-scan-manual').value, 10);
+    if(!val){ showToast('Entrez un numéro valide.'); return; }
+    finish(val);
+  };
+
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream;
+    await video.play();
+    const tick = () => {
+      if(done) return;
+      if(video.readyState === video.HAVE_ENOUGH_DATA){
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imgData.data, imgData.width, imgData.height);
+        if(code && code.data){
+          let n = null;
+          try{ n = parseInt(new URL(code.data).searchParams.get('table'), 10); }catch(e){ n = parseInt(code.data, 10); }
+          if(n){ statusEl.textContent = `QR n°${n} détecté ✅`; finish(n); return; }
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+  }catch(e){
+    statusEl.textContent = "Caméra indisponible — utilisez la saisie manuelle ci-dessous.";
+  }
+}
+
 function tableSelectOptions(current, placeholder){
   const n = state.settings.table_count || 20;
   let opts = `<option value="">${placeholder || '— Table —'}</option>`;
@@ -1052,7 +1294,10 @@ function renderService(){
         <button class="btn btn-small" id="svc-back">← Retour</button>
       </div>
     </div>
-    <button class="btn btn-gold big-cta-btn" id="svc-new-open">➕ Nouvelle réservation</button>
+    <div class="big-cta-row">
+      <button class="btn btn-gold big-cta-btn" id="svc-new-open">➕ Nouvelle réservation</button>
+      <button class="btn btn-gold big-cta-btn" id="svc-walkin-open">🚶 Walk-in</button>
+    </div>
 
     <div class="mgr-subhead">🔔 Appels en attente ${pending.length ? `<span class="tab-badge">${pending.length}</span>` : ''}</div>`;
 
@@ -1075,15 +1320,7 @@ function renderService(){
 
   html += `<div class="divider"></div>
     <div class="mgr-subhead">📅 Réservations</div>
-    <div class="settings-row"><label>Date</label><input type="date" id="svc-date" value="${state.serviceDate}"></div>
-    <details class="translations-block" style="margin-bottom:14px;">
-      <summary>🚶 Walk-in (sans réservation)</summary>
-      <div class="lang-group">
-        <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="walkin-covers" min="1" value="2"></div>
-        <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="walkin-room"></div>
-        <button class="btn btn-gold btn-small" id="walkin-submit">Ajouter le walk-in</button>
-      </div>
-    </details>`;
+    <div class="settings-row"><label>Date</label><input type="date" id="svc-date" value="${state.serviceDate}"></div>`;
 
   if(active.length === 0){
     html += `<div class="empty-note">Aucune réservation active pour cette date.</div>`;
@@ -1091,22 +1328,25 @@ function renderService(){
     html += `<div class="resa-row-grid">`;
     active.forEach(r => {
       const isArrived = r.status === 'arrivee';
+      const isExpanded = state.expandedResaRows.has(r.id);
       html += `<div class="mgr-item resa-row">
         <div class="mgr-item-top" style="flex-wrap:wrap;">
           <strong>${esc(r.time_slot)}</strong>
-          <span class="mgr-item-summary">${r.vip ? '⭐ ' : ''}${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
+          <span class="mgr-item-summary">${!r.seen_at ? '<span class="new-badge">🆕 nouveau</span> ' : ''}${r.vip ? '⭐ ' : ''}${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
         </div>
-        <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone)}${r.notes ? ` — 📝 ${esc(r.notes)}` : ''}</div>
         <div class="mgr-item-top">
-          <input type="text" class="field-name" placeholder="Table (n° interne, optionnel)" value="${esc(r.table_label||'')}" data-resa-table="${r.id}">
           ${isArrived
             ? `<span class="resa-timer">⏱ ${elapsedMins(r.arrived_at)} min</span>`
             : `<button class="btn btn-gold btn-small" data-resa-arrive="${r.id}">✓ Arrivé</button>`}
+          <button type="button" class="qr-scan-btn" data-resa-scan="${r.id}" title="Scanner le QR code">📷${r.qr_table_number ? ` n°${r.qr_table_number}` : ''}</button>
+          <button type="button" class="btn btn-gold btn-small" data-resa-order="${r.id}">🖨 Commande</button>
+          <button type="button" class="btn btn-small" data-resa-expand="${r.id}">${isExpanded ? '▴ Moins' : '▾ Plus'}</button>
         </div>
+        ${isExpanded ? `
+        <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone)}${r.notes ? ` — 📝 ${esc(r.notes)}` : ''}</div>
         <div class="mgr-item-top">
-          <label class="toggle" style="flex:1;">📟 QR code de table
-            <select data-resa-qr="${r.id}">${tableSelectOptions(r.qr_table_number, '— aucun —')}</select>
-          </label>
+          <input type="text" class="field-name" placeholder="Table (n° interne, optionnel)" value="${esc(r.table_label||'')}" data-resa-table="${r.id}">
+          <select data-resa-qr="${r.id}">${tableSelectOptions(r.qr_table_number, '— QR : aucun —')}</select>
         </div>
         <div class="toggle-row">
           ${r.phone ? `<div style="display:flex; gap:6px;">
@@ -1115,7 +1355,7 @@ function renderService(){
           </div>` : `<span></span>`}
           ${isArrived ? `<button class="btn btn-small" data-resa-done="${r.id}">Terminé / Table libérée</button>` : ``}
           <button class="btn btn-rust btn-small" data-resa-cancel="${r.id}">✕ Annuler</button>
-        </div>
+        </div>` : ``}
       </div>`;
     });
     html += `</div>`;
@@ -1149,7 +1389,20 @@ function renderService(){
     </div>`;
   }
 
+  if(state.svcWalkinOpen){
+    html += `<div class="resa-modal-overlay" id="svc-walkin-overlay">
+      <div class="resa-modal">
+        <button class="resa-modal-close" id="svc-walkin-close">✕</button>
+        <h3>🚶 Walk-in</h3>
+        <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="walkin-covers" min="1" value="2"></div>
+        <div class="settings-row"><label>Numéro de chambre (optionnel)</label><input type="text" id="walkin-room"></div>
+        <button class="btn btn-gold" id="walkin-submit" style="width:100%; margin-top:12px;">Ajouter le walk-in</button>
+      </div>
+    </div>`;
+  }
+
   app.innerHTML = html;
+  markReservationsSeen();
 
   document.getElementById('svc-back').onclick = () => { clearInterval(serviceRefreshTimer); state.view = 'manager'; render(); };
   document.getElementById('svc-enable-push').onclick = subscribeToPush;
@@ -1159,6 +1412,12 @@ function renderService(){
   if(svcNewClose) svcNewClose.onclick = svcCloseModal;
   const svcOverlay = document.getElementById('svc-new-overlay');
   if(svcOverlay) svcOverlay.addEventListener('click', (e) => { if(e.target === svcOverlay) svcCloseModal(); });
+  document.getElementById('svc-walkin-open').onclick = () => { state.svcWalkinOpen = true; render(); };
+  const svcWalkinCloseModal = () => { state.svcWalkinOpen = false; render(); };
+  const svcWalkinClose = document.getElementById('svc-walkin-close');
+  if(svcWalkinClose) svcWalkinClose.onclick = svcWalkinCloseModal;
+  const svcWalkinOverlay = document.getElementById('svc-walkin-overlay');
+  if(svcWalkinOverlay) svcWalkinOverlay.addEventListener('click', (e) => { if(e.target === svcWalkinOverlay) svcWalkinCloseModal(); });
   document.getElementById('svc-date').onchange = async (e) => {
     state.serviceDate = e.target.value;
     await loadReservations(state.serviceDate);
@@ -1179,6 +1438,13 @@ function renderService(){
     const { error } = await supabase.from('reservations').update({ qr_table_number: val }).eq('id', sel.dataset.resaQr);
     if(!checkErr(error, "attribution du QR code")) return;
     await loadReservations(state.serviceDate); render();
+  });
+  document.querySelectorAll('[data-resa-scan]').forEach(btn => btn.onclick = () => openQrScanner(btn.dataset.resaScan));
+  document.querySelectorAll('[data-resa-order]').forEach(btn => btn.onclick = () => openOrderModal(btn.dataset.resaOrder));
+  document.querySelectorAll('[data-resa-expand]').forEach(btn => btn.onclick = () => {
+    const id = btn.dataset.resaExpand;
+    if(state.expandedResaRows.has(id)) state.expandedResaRows.delete(id); else state.expandedResaRows.add(id);
+    render();
   });
   document.querySelectorAll('[data-resa-arrive]').forEach(btn => btn.onclick = async () => {
     const { error } = await supabase.from('reservations').update({ status: 'arrivee', arrived_at: new Date().toISOString() }).eq('id', btn.dataset.resaArrive);
@@ -1223,7 +1489,8 @@ function renderService(){
     showToast('Réservation ajoutée.');
   };
 
-  document.getElementById('walkin-submit').onclick = async () => {
+  const walkinSubmit = document.getElementById('walkin-submit');
+  if(walkinSubmit) walkinSubmit.onclick = async () => {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2,'0');
     const mm = String(now.getMinutes()).padStart(2,'0');
@@ -1239,6 +1506,7 @@ function renderService(){
     };
     const { error } = await supabase.from('reservations').insert(payload);
     if(!checkErr(error, "ajout du walk-in")) return;
+    state.svcWalkinOpen = false;
     await loadReservations(state.serviceDate); render();
     showToast('Walk-in ajouté.');
   };
@@ -1278,7 +1546,7 @@ function renderReception(){
       resas.forEach(r => {
         html += `<div class="mgr-item" data-rcp-item="${r.id}">
           <div class="mgr-item-top" style="flex-wrap:wrap;">
-            <span class="mgr-item-summary">${r.vip ? '⭐ ' : ''}${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
+            <span class="mgr-item-summary">${!r.seen_at ? '<span class="new-badge">🆕 nouveau</span> ' : ''}${r.vip ? '⭐ ' : ''}${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
           </div>
           <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone||'—')} ${r.status==='arrivee' ? '— 🟢 Arrivé' : r.status==='terminee' ? '— ⚪ Terminé' : ''}</div>
           <div class="mgr-item-top">
@@ -1343,6 +1611,7 @@ function renderReception(){
   }
 
   app.innerHTML = html;
+  markReservationsSeen();
 
   document.getElementById('rcp-back').onclick = () => { state.view = 'manager'; render(); };
   document.getElementById('rcp-new-open').onclick = () => { state.rcpNewOpen = true; render(); };
@@ -1451,10 +1720,93 @@ function renderAccounts(){
   });
 }
 
+// ---------- STATISTIQUES ----------
+function renderStats(){
+  const maxCap = state.settings.reservation_max_covers || 5;
+  const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
+  const active = state.statsData.filter(r => r.status !== 'annulee');
+
+  // Couverts par soir, 7 derniers jours
+  const days = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const coversByDay = days.map(d => ({
+    date: d,
+    covers: active.filter(r => r.reservation_date === d).reduce((a,r)=>a+r.covers,0),
+  }));
+  const maxDayCovers = Math.max(1, ...coversByDay.map(d => d.covers));
+
+  // Taux de remplissage par créneau (hors walk-ins, dont l'heure ne suit pas la grille)
+  const bySlot = slots.map(s => {
+    const rows = active.filter(r => r.time_slot === s && !r.is_walkin);
+    const daysWithData = new Set(rows.map(r => r.reservation_date)).size || 1;
+    const totalCovers = rows.reduce((a,r)=>a+r.covers,0);
+    const avgPerDay = totalCovers / 7; // moyenne sur la semaine, jours vides comptés comme 0
+    const pct = Math.min(100, Math.round((avgPerDay / maxCap) * 100));
+    return { slot: s, pct, avgPerDay };
+  });
+
+  const totalWeekCovers = coversByDay.reduce((a,d)=>a+d.covers,0);
+  const dayNames = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+
+  let html = `<div class="frame mgr-frame">
+    <div class="mgr-header">
+      <div class="mgr-title">📊 Statistiques</div>
+      <button class="btn btn-small" id="stats-back">← Retour</button>
+    </div>
+    <p class="mgr-hint">7 derniers jours — ${totalWeekCovers} couverts au total.</p>
+
+    <div class="mgr-subhead">Couverts par soir</div>
+    <div class="stats-bars">`;
+  coversByDay.forEach(d => {
+    const w = Math.round((d.covers / maxDayCovers) * 100);
+    const dow = dayNames[new Date(d.date+'T00:00:00').getDay()];
+    html += `<div class="stats-bar-row">
+      <span class="stats-bar-label">${dow} ${d.date.slice(8,10)}/${d.date.slice(5,7)}</span>
+      <div class="stats-bar-track"><div class="stats-bar-fill" style="width:${w}%"></div></div>
+      <span class="stats-bar-value">${d.covers}</span>
+    </div>`;
+  });
+  html += `</div>
+
+    <div class="divider"></div>
+    <div class="mgr-subhead">Taux de remplissage moyen par créneau (semaine)</div>
+    <p class="mgr-hint">Moyenne de couverts réservés à ce créneau, par rapport à la limite de ${maxCap}.</p>
+    <div class="stats-bars">`;
+  bySlot.forEach(s => {
+    const cls = s.pct === 0 ? 'free' : (s.pct >= 90 ? 'full' : 'near');
+    html += `<div class="stats-bar-row">
+      <span class="stats-bar-label">${esc(s.slot)}</span>
+      <div class="stats-bar-track"><div class="stats-bar-fill ${cls}" style="width:${s.pct}%"></div></div>
+      <span class="stats-bar-value">${s.pct}%</span>
+    </div>`;
+  });
+  html += `</div>
+  </div>`;
+
+  app.innerHTML = html;
+  document.getElementById('stats-back').onclick = () => { state.view = 'manager'; render(); };
+}
+
 // ---------- CUSTOMER MENU ----------
 function renderMenu(){
   applyTheme();
   const L = state.lang;
+
+  // Mode brouillon : les clients voient la dernière carte publiée (figée),
+  // pas les modifications en cours côté gérant. On échange temporairement
+  // les données pour toute la durée de cette fonction, puis on restaure.
+  const useSnapshot = state.settings.draft_mode && state.settings.menu_snapshot;
+  let _liveCategories, _liveItems, _liveFormulas;
+  if(useSnapshot){
+    _liveCategories = state.categories; _liveItems = state.items; _liveFormulas = state.formulas;
+    state.categories = state.settings.menu_snapshot.categories || [];
+    state.items = state.settings.menu_snapshot.items || [];
+    state.formulas = state.settings.menu_snapshot.formulas || [];
+  }
+
   const name = tr(state.settings, 'name', L);
   const fCats = foodCats().filter(c => itemsForFiltered(c.id).length > 0);
   const dCats = drinkCats().filter(c => itemsForFiltered(c.id).length > 0);
@@ -1625,6 +1977,10 @@ function renderMenu(){
     showToast(t('callSent', L));
     setTimeout(() => { const b = document.getElementById('call-server-btn'); if(b) b.disabled = false; }, 60000);
   };
+
+  if(useSnapshot){
+    state.categories = _liveCategories; state.items = _liveItems; state.formulas = _liveFormulas;
+  }
 }
 
 // ---------- LOGIN ----------
@@ -1786,6 +2142,7 @@ function renderManager(){
         ${pages.includes('reception') ? `<button class="btn btn-small" id="reception-btn">📖 Réception</button>` : ''}
         ${pages.includes('kitchen') ? `<button class="btn btn-small" id="kitchen-btn">📦 Stock cuisine</button>` : ''}
         ${pages.includes('service') ? `<button class="btn btn-small" id="service-btn">🛎 Service</button>` : ''}
+        ${pages.includes('stats') ? `<button class="btn btn-small" id="stats-btn">📊 Stats</button>` : ''}
         ${role === 'admin' ? `<button class="btn btn-small" id="accounts-btn">👤 Comptes</button>` : ''}
         <button class="btn btn-small" id="exit-btn">Voir la carte</button>
         <button class="btn btn-small btn-rust" id="logout-btn">Déconnexion</button>
@@ -1801,6 +2158,9 @@ function renderManager(){
     </div>`;
 
   if(state.editingTab === 'menu'){
+    if(state.settings.draft_mode){
+      html += `<div class="draft-banner">📝 Mode brouillon actif — vos clients ne verront pas ces changements avant que vous cliquiez "Publier" dans Réglages.</div>`;
+    }
     html += `<div class="mgr-subhead">🍽 Plats</div>
       <div class="mgr-hint">Glissez la poignée ⠿ pour réordonner catégories et plats.</div>
       <div id="food-cats-list">`;
@@ -1915,7 +2275,7 @@ function renderManager(){
     <div class="settings-row"><label>Nombre de tables</label><input type="number" id="table-count-input" min="1" value="${state.settings.table_count||20}"></div>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
       <button class="btn btn-gold btn-small" id="gen-table-qrs-btn">Générer les QR codes</button>
-      <button class="btn btn-small" id="print-table-qrs-btn" style="display:none;">🖨 Imprimer</button>
+      <button class="btn btn-small" id="print-table-qrs-btn" style="${state.settings.table_count ? '' : 'display:none;'}">🖨 Imprimer</button>
     </div>
     <div id="table-qr-grid" class="table-qr-grid"></div>`;
   }
@@ -1958,7 +2318,25 @@ function renderManager(){
       </div>
       <button class="btn btn-gold btn-small" id="save-resa-settings-btn" style="margin-top:6px;">Enregistrer les créneaux</button>
       <p class="mgr-hint">Page de réservation à donner à la réception : <strong>${esc(location.origin + location.pathname)}#reservation</strong></p>
-    </div>`;
+    </div>
+
+    <div class="divider"></div>
+    <div class="mgr-subhead">📝 Mode brouillon de la carte</div>
+    <p class="mgr-hint">Quand c'est activé, vos clients continuent de voir la carte telle qu'elle était à la dernière publication, même si vous modifiez des plats. Cliquez "Publier" quand vos changements sont prêts.</p>
+    <div class="toggle-row">
+      <div class="toggle" data-toggle-draft>
+        <div class="switch ${state.settings.draft_mode ? '' : 'off'}"></div>
+        <span>Mode brouillon activé</span>
+      </div>
+    </div>
+    <p class="mgr-hint">${state.settings.snapshot_published_at ? `Dernière publication : ${new Date(state.settings.snapshot_published_at).toLocaleString('fr-FR')}` : "Jamais encore publié — tant que vous ne publiez pas, les clients voient la carte en direct."}</p>
+    <button class="btn btn-gold btn-small" id="publish-menu-btn">📢 Publier la carte maintenant</button>
+
+    <div class="divider"></div>
+    <div class="mgr-subhead">🖨 Imprimante cuisine</div>
+    <div class="settings-row"><label>Adresse IP de l'imprimante (ex. 192.168.1.50)</label><input type="text" id="printer-ip" value="${esc(state.settings.kitchen_printer_ip||'')}" placeholder="192.168.1.50"></div>
+    <button class="btn btn-gold btn-small" id="save-printer-btn">Enregistrer</button>
+    <p class="mgr-hint">Nécessite le pont d'impression local installé sur un ordinateur du restaurant (voir le fichier print-bridge.js fourni séparément).</p>`;
   }
 
   html += `</div>`;
@@ -2006,6 +2384,12 @@ function bindManagerEvents(){
   if(accountsBtn) accountsBtn.onclick = async () => {
     await loadAccounts();
     state.view = 'accounts';
+    render();
+  };
+  const statsBtn = document.getElementById('stats-btn');
+  if(statsBtn) statsBtn.onclick = async () => {
+    await loadStatsData();
+    state.view = 'stats';
     render();
   };
   document.getElementById('logout-btn').onclick = async () => { await supabase.auth.signOut(); location.hash=''; state.view='menu'; render(); };
@@ -2172,27 +2556,43 @@ function bindManagerEvents(){
     new QRCode(document.getElementById('qr-canvas'), { text: link, width: 180, height: 180, colorDark:'#182922', colorLight:'#ffffff' });
     document.getElementById('copy-link').onclick = () => navigator.clipboard.writeText(link).then(()=>showToast('Lien copié !'));
 
+    // Dessine la grille de QR codes à partir de state.settings.table_count —
+    // appelé à CHAQUE rendu de cet onglet (pas seulement au clic), pour que
+    // la grille survive à un re-rendu (ex. déclenché par la sauvegarde en
+    // temps réel) au lieu de disparaître.
+    const drawTableQrGrid = () => {
+      const n = state.settings.table_count || 0;
+      const grid = document.getElementById('table-qr-grid');
+      const printBtn = document.getElementById('print-table-qrs-btn');
+      grid.innerHTML = '';
+      if(n > 0){
+        for(let i=1;i<=n;i++){
+          const card = document.createElement('div');
+          card.className = 'table-qr-card';
+          const qrDiv = document.createElement('div');
+          card.appendChild(qrDiv);
+          const label = document.createElement('div');
+          label.className = 'table-qr-label';
+          label.textContent = 'Table ' + i;
+          card.appendChild(label);
+          grid.appendChild(card);
+          new QRCode(qrDiv, { text: `${link}?table=${i}`, width: 110, height: 110, colorDark:'#182922', colorLight:'#ffffff' });
+        }
+        if(printBtn) printBtn.style.display = 'inline-block';
+      } else if(printBtn){
+        printBtn.style.display = 'none';
+      }
+    };
+    drawTableQrGrid();
+
     document.getElementById('gen-table-qrs-btn').onclick = async () => {
       const n = Math.max(1, parseInt(document.getElementById('table-count-input').value, 10) || 20);
       const { error } = await supabase.from('restaurant_settings').update({ table_count: n }).eq('id', 1);
       if(!checkErr(error, "enregistrement du nombre de tables")) return;
-      const grid = document.getElementById('table-qr-grid');
-      grid.innerHTML = '';
-      for(let i=1;i<=n;i++){
-        const card = document.createElement('div');
-        card.className = 'table-qr-card';
-        const qrDiv = document.createElement('div');
-        card.appendChild(qrDiv);
-        const label = document.createElement('div');
-        label.className = 'table-qr-label';
-        label.textContent = 'Table ' + i;
-        card.appendChild(label);
-        grid.appendChild(card);
-        new QRCode(qrDiv, { text: `${link}?table=${i}`, width: 110, height: 110, colorDark:'#182922', colorLight:'#ffffff' });
-      }
-      document.getElementById('print-table-qrs-btn').style.display = 'inline-block';
-      await loadAll();
+      state.settings.table_count = n;
+      drawTableQrGrid();
       showToast(`${n} QR codes générés.`);
+      loadAll();
     };
     const printBtn = document.getElementById('print-table-qrs-btn');
     if(printBtn) printBtn.onclick = () => window.print();
@@ -2236,6 +2636,30 @@ function bindManagerEvents(){
       if(!checkErr(error, "enregistrement des créneaux")) return;
       await loadAll(); render();
       showToast('Créneaux enregistrés.');
+    };
+
+    const draftToggle = document.querySelector('[data-toggle-draft]');
+    if(draftToggle) draftToggle.onclick = async () => {
+      const { error } = await supabase.from('restaurant_settings').update({ draft_mode: !state.settings.draft_mode }).eq('id', 1);
+      if(!checkErr(error, "changement du mode brouillon")) return;
+      await loadAll(); render();
+    };
+    const publishBtn = document.getElementById('publish-menu-btn');
+    if(publishBtn) publishBtn.onclick = async () => {
+      const snapshot = { categories: state.categories, items: state.items, formulas: state.formulas };
+      const { error } = await supabase.from('restaurant_settings').update({
+        menu_snapshot: snapshot, snapshot_published_at: new Date().toISOString(),
+      }).eq('id', 1);
+      if(!checkErr(error, "publication de la carte")) return;
+      await loadAll(); render();
+      showToast('Carte publiée — vos clients la voient maintenant.');
+    };
+    const savePrinterBtn = document.getElementById('save-printer-btn');
+    if(savePrinterBtn) savePrinterBtn.onclick = async () => {
+      const { error } = await supabase.from('restaurant_settings').update({ kitchen_printer_ip: document.getElementById('printer-ip').value.trim() }).eq('id', 1);
+      if(!checkErr(error, "enregistrement de l'imprimante")) return;
+      await loadAll(); render();
+      showToast('Imprimante enregistrée.');
     };
   }
 }
@@ -2281,6 +2705,7 @@ window.addEventListener('hashchange', async () => {
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 </body>
 </html>
