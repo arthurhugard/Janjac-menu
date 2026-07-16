@@ -734,7 +734,7 @@ function mocktailOptionsByType(type){ return state.mocktailOptions.filter(o => o
 function checkErr(error, contexte){
   if(error){
     if((error.message||'').includes('CAPACITY_FULL')){
-      showToast(`Ce créneau est complet (${state.settings.reservation_max_covers||5} couverts max). Choisissez un autre horaire.`);
+      showToast(`Ce créneau est complet. Choisissez un autre horaire.`);
       return false;
     }
     console.error(`Erreur Supabase (${contexte}) :`, error);
@@ -777,6 +777,31 @@ function generateTimeSlots(start, end, step){
   return slots;
 }
 
+// Renvoie les créneaux du midi et du soir séparément, plus la liste combinée.
+function getSlotWindows(){
+  const s = state.settings;
+  const lunch = s.lunch_enabled === false ? [] : generateTimeSlots(s.lunch_start || '11:30', s.lunch_end || '14:00', s.lunch_slot_minutes || s.reservation_slot_minutes || 15);
+  const dinner = generateTimeSlots(s.reservation_start || '18:00', s.reservation_end || '21:00', s.reservation_slot_minutes || 15);
+  return { lunch, dinner, all: [...lunch, ...dinner] };
+}
+
+function maxCapForSlot(slot){
+  const s = state.settings;
+  const isLunch = slot >= (s.lunch_start || '11:30') && slot <= (s.lunch_end || '14:00');
+  return isLunch ? (s.lunch_max_covers || 5) : (s.reservation_max_covers || 5);
+}
+
+function slotOptionsGrouped(win){
+  let html = '';
+  if(win.lunch.length){
+    html += `<optgroup label="☀️ Déjeuner">${win.lunch.map(s => `<option value="${s}">${s}</option>`).join('')}</optgroup>`;
+  }
+  if(win.dinner.length){
+    html += `<optgroup label="🌙 Dîner">${win.dinner.map(s => `<option value="${s}">${s}</option>`).join('')}</optgroup>`;
+  }
+  return html;
+}
+
 // Version simplifiée d'une liste de plats pour la page de réservation :
 // juste le nom et le prix, sans description/photo/tags/allergènes, pour rester lisible.
 function renderSimpleItemsList(items, L){
@@ -797,7 +822,8 @@ function renderSimpleItemsList(items, L){
 function renderReservationPublic(){
   const L = state.lang;
   applyTheme();
-  const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
+  const slotWindows = getSlotWindows();
+  const slots = slotWindows.all;
   const today = new Date().toISOString().slice(0,10);
   const fCats = foodCats().filter(c => itemsFor(c.id).length > 0);
   const name = tr(state.settings, 'name', L);
@@ -834,7 +860,7 @@ function renderReservationPublic(){
   <div class="resa-sticky-bar"><button id="resa-open-modal">${esc(t('reserveBtn', L))}</button></div>`;
 
   if(state.reservationModalOpen){
-    html += renderReservationModal(L, slots, today);
+    html += renderReservationModal(L, slotWindows, today);
   }
 
   app.innerHTML = html;
@@ -847,7 +873,7 @@ function renderReservationPublic(){
   bindReservationModalEvents(slots, today);
 }
 
-function renderReservationModal(L, slots, today){
+function renderReservationModal(L, slotWindows, today){
   return `<div class="resa-modal-overlay" id="resa-overlay">
     <div class="resa-modal">
       <button class="resa-modal-close" id="resa-modal-close">✕</button>
@@ -860,7 +886,7 @@ function renderReservationModal(L, slots, today){
         <form id="resa-form" class="resa-form">
           <div class="settings-row"><label>${esc(t('reserveDate', L))}</label><input type="date" id="resa-date" min="${today}" value="${today}" required></div>
           <div class="settings-row"><label>${esc(t('reserveSlot', L))}</label>
-            <select id="resa-slot" required>${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+            <select id="resa-slot" required>${slotOptionsGrouped(slotWindows)}</select>
           </div>
           <div class="settings-row"><label>${esc(t('reserveCovers', L))}</label><input type="number" id="resa-covers" min="1" value="2" required></div>
           <div class="settings-row"><label>${esc(t('reserveName', L))}</label><input type="text" id="resa-name" required></div>
@@ -1284,7 +1310,8 @@ function renderService(){
   const active = state.reservations.filter(r => r.status === 'attente' || r.status === 'arrivee')
     .sort((a,b) => a.time_slot.localeCompare(b.time_slot));
   const history = state.reservations.filter(r => r.status === 'terminee' || r.status === 'annulee');
-  const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
+  const slotWindows = getSlotWindows();
+  const slots = slotWindows.all;
 
   let html = `<div class="frame mgr-frame">
     <div class="mgr-header">
@@ -1378,7 +1405,7 @@ function renderService(){
         <button class="resa-modal-close" id="svc-new-close">✕</button>
         <h3>➕ Nouvelle réservation</h3>
         <div class="settings-row"><label>Créneau horaire</label>
-          <select id="svc-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+          <select id="svc-new-slot">${slotOptionsGrouped(slotWindows)}</select>
         </div>
         <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="svc-new-covers" min="1" value="2"></div>
         <div class="settings-row"><label>Nom</label><input type="text" id="svc-new-name"></div>
@@ -1516,8 +1543,7 @@ function renderService(){
 const PREAUTH_LABELS = { true: '✅ Préauto autorisée', false: '🚫 Préauto refusée', null: '❔ Préauto non définie' };
 
 function renderReception(){
-  const maxCap = state.settings.reservation_max_covers || 5;
-  const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
+  const slotWindows = getSlotWindows();
   const byStatus = s => state.reservations.filter(r => r.status !== 'annulee' && r.time_slot === s).sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
   const cancelled = state.reservations.filter(r => r.status === 'annulee');
 
@@ -1527,51 +1553,58 @@ function renderReception(){
       <button class="btn btn-small" id="rcp-back">← Retour</button>
     </div>
     <button class="btn btn-gold big-cta-btn" id="rcp-new-open">➕ Nouvelle réservation</button>
-    <div class="settings-row"><label>Date</label><input type="date" id="rcp-date" value="${state.serviceDate}"></div>
-    <div class="mgr-cat-grid">`;
+    <div class="settings-row"><label>Date</label><input type="date" id="rcp-date" value="${state.serviceDate}"></div>`;
 
-  slots.forEach(s => {
-    const resas = byStatus(s);
-    const sum = resas.reduce((a,r)=>a+r.covers,0);
-    const full = sum >= maxCap;
-    const capState = sum === 0 ? 'free' : (full ? 'full' : 'near');
-    html += `<div class="mgr-cat">
-      <div class="mgr-cat-head">
-        <strong style="font-size:1.15rem;">${esc(s)}</strong>
-        <span class="slot-capacity-badge ${capState}">${sum} / ${maxCap} couverts</span>
-      </div>`;
-    if(resas.length === 0){
-      html += `<div class="mgr-hint" style="margin:0;">Aucune réservation sur ce créneau.</div>`;
-    } else {
-      resas.forEach(r => {
-        html += `<div class="mgr-item" data-rcp-item="${r.id}">
-          <div class="mgr-item-top" style="flex-wrap:wrap;">
-            <span class="mgr-item-summary">${!r.seen_at ? '<span class="new-badge">🆕 nouveau</span> ' : ''}${r.vip ? '⭐ ' : ''}${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
-          </div>
-          <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone||'—')} ${r.status==='arrivee' ? '— 🟢 Arrivé' : r.status==='terminee' ? '— ⚪ Terminé' : ''}</div>
-          <div class="mgr-item-top">
-            <label class="toggle" style="flex:1;"><input type="checkbox" data-rcp-vip="${r.id}" ${r.vip?'checked':''} style="width:auto;"> VIP</label>
-            <select data-rcp-preauth="${r.id}" style="flex:2;">
-              <option value="null" ${r.preauth_allowed===null?'selected':''}>❔ Préauto non définie</option>
-              <option value="true" ${r.preauth_allowed===true?'selected':''}>✅ Préauto autorisée</option>
-              <option value="false" ${r.preauth_allowed===false?'selected':''}>🚫 Préauto refusée</option>
-            </select>
-          </div>
-          <input type="text" placeholder="Table (numéro libre)" value="${esc(r.table_label||'')}" data-rcp-table="${r.id}">
-          <textarea placeholder="Notes / commentaires (ex. anniversaire, allergie...)" data-rcp-notes="${r.id}">${esc(r.notes||'')}</textarea>
-          <div class="toggle-row">
-            ${r.phone ? `<div style="display:flex; gap:6px;">
-              <button class="btn btn-small" data-rcp-notify="${r.id}">💬 Notifier${r.notified_at ? ' ✓' : ''}</button>
-              <button class="btn btn-small" data-rcp-copy="${r.id}">📋</button>
-            </div>` : `<span></span>`}
-            <button class="btn btn-rust btn-small" data-rcp-cancel="${r.id}">✕ Annuler</button>
-          </div>
+  const renderSlotSection = (title, slots) => {
+    if(slots.length === 0) return;
+    html += `<div class="mgr-subhead">${title}</div><div class="mgr-cat-grid">`;
+    slots.forEach(s => {
+      const maxCap = maxCapForSlot(s);
+      const resas = byStatus(s);
+      const sum = resas.reduce((a,r)=>a+r.covers,0);
+      const full = sum >= maxCap;
+      const capState = sum === 0 ? 'free' : (full ? 'full' : 'near');
+      html += `<div class="mgr-cat">
+        <div class="mgr-cat-head">
+          <strong style="font-size:1.15rem;">${esc(s)}</strong>
+          <span class="slot-capacity-badge ${capState}">${sum} / ${maxCap} couverts</span>
         </div>`;
-      });
-    }
+      if(resas.length === 0){
+        html += `<div class="mgr-hint" style="margin:0;">Aucune réservation sur ce créneau.</div>`;
+      } else {
+        resas.forEach(r => {
+          html += `<div class="mgr-item" data-rcp-item="${r.id}">
+            <div class="mgr-item-top" style="flex-wrap:wrap;">
+              <span class="mgr-item-summary">${!r.seen_at ? '<span class="new-badge">🆕 nouveau</span> ' : ''}${r.vip ? '⭐ ' : ''}${esc(r.name)} — ${r.covers} couvert${r.covers>1?'s':''}${r.room_number ? ` — Ch. ${esc(r.room_number)}` : ''}</span>
+            </div>
+            <div class="mgr-item-summary" style="opacity:0.8;">📞 ${esc(r.phone||'—')} ${r.status==='arrivee' ? '— 🟢 Arrivé' : r.status==='terminee' ? '— ⚪ Terminé' : ''}</div>
+            <div class="mgr-item-top">
+              <label class="toggle" style="flex:1;"><input type="checkbox" data-rcp-vip="${r.id}" ${r.vip?'checked':''} style="width:auto;"> VIP</label>
+              <select data-rcp-preauth="${r.id}" style="flex:2;">
+                <option value="null" ${r.preauth_allowed===null?'selected':''}>❔ Préauto non définie</option>
+                <option value="true" ${r.preauth_allowed===true?'selected':''}>✅ Préauto autorisée</option>
+                <option value="false" ${r.preauth_allowed===false?'selected':''}>🚫 Préauto refusée</option>
+              </select>
+            </div>
+            <input type="text" placeholder="Table (numéro libre)" value="${esc(r.table_label||'')}" data-rcp-table="${r.id}">
+            <textarea placeholder="Notes / commentaires (ex. anniversaire, allergie...)" data-rcp-notes="${r.id}">${esc(r.notes||'')}</textarea>
+            <div class="toggle-row">
+              ${r.phone ? `<div style="display:flex; gap:6px;">
+                <button class="btn btn-small" data-rcp-notify="${r.id}">💬 Notifier${r.notified_at ? ' ✓' : ''}</button>
+                <button class="btn btn-small" data-rcp-copy="${r.id}">📋</button>
+              </div>` : `<span></span>`}
+              <button class="btn btn-rust btn-small" data-rcp-cancel="${r.id}">✕ Annuler</button>
+            </div>
+          </div>`;
+        });
+      }
+      html += `</div>`;
+    });
     html += `</div>`;
-  });
-  html += `</div>`;
+  };
+
+  renderSlotSection('☀️ Déjeuner', slotWindows.lunch);
+  renderSlotSection('🌙 Dîner', slotWindows.dinner);
 
   if(cancelled.length > 0){
     html += `<details class="translations-block" style="margin-top:12px;">
@@ -1590,7 +1623,7 @@ function renderReception(){
         <button class="resa-modal-close" id="rcp-new-close">✕</button>
         <h3>➕ Nouvelle réservation</h3>
         <div class="settings-row"><label>Créneau horaire</label>
-          <select id="rcp-new-slot">${slots.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+          <select id="rcp-new-slot">${slotOptionsGrouped(slotWindows)}</select>
         </div>
         <div class="settings-row"><label>Nombre de couverts</label><input type="number" id="rcp-new-covers" min="1" value="2"></div>
         <div class="settings-row"><label>Nom</label><input type="text" id="rcp-new-name"></div>
@@ -1722,8 +1755,8 @@ function renderAccounts(){
 
 // ---------- STATISTIQUES ----------
 function renderStats(){
-  const maxCap = state.settings.reservation_max_covers || 5;
-  const slots = generateTimeSlots(state.settings.reservation_start, state.settings.reservation_end, state.settings.reservation_slot_minutes);
+  const slotWindows = getSlotWindows();
+  const slots = slotWindows.all;
   const active = state.statsData.filter(r => r.status !== 'annulee');
 
   // Couverts par soir, 7 derniers jours
@@ -1741,10 +1774,9 @@ function renderStats(){
   // Taux de remplissage par créneau (hors walk-ins, dont l'heure ne suit pas la grille)
   const bySlot = slots.map(s => {
     const rows = active.filter(r => r.time_slot === s && !r.is_walkin);
-    const daysWithData = new Set(rows.map(r => r.reservation_date)).size || 1;
     const totalCovers = rows.reduce((a,r)=>a+r.covers,0);
     const avgPerDay = totalCovers / 7; // moyenne sur la semaine, jours vides comptés comme 0
-    const pct = Math.min(100, Math.round((avgPerDay / maxCap) * 100));
+    const pct = Math.min(100, Math.round((avgPerDay / maxCapForSlot(s)) * 100));
     return { slot: s, pct, avgPerDay };
   });
 
@@ -2308,7 +2340,25 @@ function renderManager(){
     </div>
 
     <div class="divider"></div>
-    <div class="mgr-subhead">📅 Créneaux de réservation</div>
+    <div class="mgr-subhead">☀️ Créneaux du midi</div>
+    <div class="mgr-note-block">
+      <div class="toggle-row">
+        <div class="toggle" data-toggle-lunch>
+          <div class="switch ${state.settings.lunch_enabled === false ? 'off' : ''}"></div>
+          <span>Service du midi activé</span>
+        </div>
+      </div>
+      <div class="mgr-item-top">
+        <div class="field-block"><span class="lang-tag">Début</span><input type="time" id="lunch-start" value="${esc(state.settings.lunch_start||'11:30')}"></div>
+        <div class="field-block"><span class="lang-tag">Fin</span><input type="time" id="lunch-end" value="${esc(state.settings.lunch_end||'14:00')}"></div>
+        <div class="field-block"><span class="lang-tag">Intervalle (min)</span><input type="number" id="lunch-slot-min" min="5" step="5" value="${state.settings.lunch_slot_minutes||15}"></div>
+        <div class="field-block"><span class="lang-tag">Couverts max / créneau</span><input type="number" id="lunch-max-covers" min="1" value="${state.settings.lunch_max_covers||5}"></div>
+      </div>
+      <button class="btn btn-gold btn-small" id="save-lunch-settings-btn" style="margin-top:6px;">Enregistrer le midi</button>
+    </div>
+
+    <div class="divider"></div>
+    <div class="mgr-subhead">🌙 Créneaux du soir</div>
     <div class="mgr-note-block">
       <div class="mgr-item-top">
         <div class="field-block"><span class="lang-tag">Début</span><input type="time" id="resa-start" value="${esc(state.settings.reservation_start||'18:00')}"></div>
@@ -2316,7 +2366,7 @@ function renderManager(){
         <div class="field-block"><span class="lang-tag">Intervalle (min)</span><input type="number" id="resa-slot-min" min="5" step="5" value="${state.settings.reservation_slot_minutes||15}"></div>
         <div class="field-block"><span class="lang-tag">Couverts max / créneau</span><input type="number" id="resa-max-covers" min="1" value="${state.settings.reservation_max_covers||5}"></div>
       </div>
-      <button class="btn btn-gold btn-small" id="save-resa-settings-btn" style="margin-top:6px;">Enregistrer les créneaux</button>
+      <button class="btn btn-gold btn-small" id="save-resa-settings-btn" style="margin-top:6px;">Enregistrer le soir</button>
       <p class="mgr-hint">Page de réservation à donner à la réception : <strong>${esc(location.origin + location.pathname)}#reservation</strong></p>
     </div>
 
@@ -2635,7 +2685,26 @@ function bindManagerEvents(){
       const { error } = await supabase.from('restaurant_settings').update(payload).eq('id', 1);
       if(!checkErr(error, "enregistrement des créneaux")) return;
       await loadAll(); render();
-      showToast('Créneaux enregistrés.');
+      showToast('Créneaux du soir enregistrés.');
+    };
+
+    document.getElementById('save-lunch-settings-btn').onclick = async () => {
+      const payload = {
+        lunch_start: document.getElementById('lunch-start').value || '11:30',
+        lunch_end: document.getElementById('lunch-end').value || '14:00',
+        lunch_slot_minutes: parseInt(document.getElementById('lunch-slot-min').value, 10) || 15,
+        lunch_max_covers: parseInt(document.getElementById('lunch-max-covers').value, 10) || 5,
+      };
+      const { error } = await supabase.from('restaurant_settings').update(payload).eq('id', 1);
+      if(!checkErr(error, "enregistrement des créneaux du midi")) return;
+      await loadAll(); render();
+      showToast('Créneaux du midi enregistrés.');
+    };
+    const lunchToggle = document.querySelector('[data-toggle-lunch]');
+    if(lunchToggle) lunchToggle.onclick = async () => {
+      const { error } = await supabase.from('restaurant_settings').update({ lunch_enabled: state.settings.lunch_enabled === false }).eq('id', 1);
+      if(!checkErr(error, "activation du service midi")) return;
+      await loadAll(); render();
     };
 
     const draftToggle = document.querySelector('[data-toggle-draft]');
