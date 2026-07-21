@@ -7,6 +7,14 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap');
 
+  @font-face {
+    font-family: 'Barqish';
+    src: url('./Barqish.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+
   :root{
     --bg:#182922; --bg2:#132019;
     --chalk:#f2efe3; --chalk-dim:#b7c2b6;
@@ -74,7 +82,7 @@
   }
   .lang-flag-btn:hover{ background:rgba(242,239,227,0.08); border-color:var(--line); }
 
-  .restaurant-name{ font-family:'Caveat', cursive; font-weight:700; font-size:2.6rem; text-align:center; margin:0 0 2px; text-shadow:0 0 14px rgba(242,239,227,0.15); }
+  .restaurant-name{ font-family:'Barqish', 'Caveat', cursive; font-weight:700; font-size:2.6rem; text-align:center; margin:0 0 2px; text-shadow:0 0 14px rgba(242,239,227,0.15); }
   .subtitle{ text-align:center; color:var(--chalk-dim); font-size:0.78rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:18px; }
   .divider{ height:1px; background:var(--line); margin:14px 0 18px; position:relative; }
   .divider::after{ content:'❧'; position:absolute; left:50%; top:50%; transform:translate(-50%,-52%); background:var(--bg2); padding:0 10px; color:var(--gold); font-size:0.9rem; }
@@ -118,8 +126,8 @@
   .item-content{ flex:1; min-width:0; }
 
   .category{ margin-bottom:22px; }
-  .category-name{ font-family:'Caveat', cursive; font-weight:700; font-size:1.7rem; color:var(--gold); margin:0 0 10px; }
-  .section-title{ font-family:'Caveat', cursive; font-weight:700; font-size:2.1rem; color:var(--chalk); text-align:center; margin:8px 0 4px; }
+  .category-name{ font-family:'Barqish', 'Caveat', cursive; font-weight:700; font-size:1.7rem; color:var(--gold); margin:0 0 10px; }
+  .section-title{ font-family:'Barqish', 'Caveat', cursive; font-weight:700; font-size:2.1rem; color:var(--chalk); text-align:center; margin:8px 0 4px; }
 
   .item{ position:relative; padding:9px 6px; border-radius:6px; transition:background .15s; }
   .item:active{ background:rgba(242,239,227,0.04); }
@@ -149,7 +157,7 @@
     filter:blur(5px); transform:rotate(-2deg); pointer-events:none; mix-blend-mode:overlay;
   }
   .sold-out-tag{
-    position:absolute; right:2px; top:-6px; font-family:'Caveat', cursive; font-weight:700; font-size:0.95rem;
+    position:absolute; right:2px; top:-6px; font-family:'Barqish', 'Caveat', cursive; font-weight:700; font-size:0.95rem;
     color:var(--rust); border:1.5px solid var(--rust); border-radius:5px; padding:0 7px;
     transform:rotate(-6deg); background:rgba(193,84,58,0.08);
   }
@@ -175,10 +183,10 @@
 
   /* Coups de coeur */
   .highlight-box{ border:1.5px solid var(--gold); border-radius:8px; padding:14px 14px 6px; margin-bottom:22px; background:rgba(227,178,60,0.06); }
-  .highlight-title{ font-family:'Caveat', cursive; font-weight:700; font-size:1.9rem; color:var(--gold); text-align:center; margin:0 0 8px; }
+  .highlight-title{ font-family:'Barqish', 'Caveat', cursive; font-weight:700; font-size:1.9rem; color:var(--gold); text-align:center; margin:0 0 8px; }
 
   .mgr-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-  .mgr-title{ font-family:'Caveat', cursive; font-size:1.9rem; }
+  .mgr-title{ font-family:'Barqish', 'Caveat', cursive; font-size:1.9rem; }
   .btn{ font-family:'Work Sans', sans-serif; font-size:0.82rem; font-weight:500; padding:8px 14px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; transition:background .15s, transform .1s; }
   .btn:hover{ background:rgba(242,239,227,0.06); }
   .btn:active{ transform:scale(0.96); }
@@ -197,14 +205,14 @@
   .tab-badge{ background:var(--rust); color:#fff; border-radius:10px; padding:0 6px; font-size:0.68rem; font-weight:700; }
   .resa-timer{ background:var(--gold); color:#20180a; border-radius:12px; padding:5px 12px; font-size:0.82rem; font-weight:700; }
 
-  .mgr-subhead{ font-family:'Caveat', cursive; font-size:1.5rem; color:var(--gold); margin:16px 0 6px; }
+  .mgr-subhead{ font-family:'Barqish', 'Caveat', cursive; font-size:1.5rem; color:var(--gold); margin:16px 0 6px; }
   .mgr-hint{ font-size:0.72rem; color:var(--chalk-dim); opacity:0.8; margin:-4px 0 10px; }
 
   .mgr-cat{ border:1px solid var(--line); border-radius:8px; padding:12px 12px 14px; margin-bottom:14px; background:rgba(242,239,227,0.025); box-shadow:0 2px 8px rgba(0,0,0,0.15); }
   .mgr-cat.sortable-ghost{ opacity:0.35; }
   .mgr-cat-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; }
   .mgr-cat-names{ display:flex; flex-direction:column; gap:2px; width:60%; }
-  .mgr-cat-head input{ font-family:'Caveat', cursive; font-size:1.25rem; background:transparent; border:none; border-bottom:1px dashed var(--line); color:var(--gold); padding:2px 0; width:100%; }
+  .mgr-cat-head input{ font-family:'Barqish', 'Caveat', cursive; font-size:1.25rem; background:transparent; border:none; border-bottom:1px dashed var(--line); color:var(--gold); padding:2px 0; width:100%; }
   .mgr-cat-head input.en{ color:var(--chalk-dim); font-size:1.05rem; }
   .lang-tag{ font-size:0.62rem; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
   .kind-badge{ font-size:0.62rem; text-transform:uppercase; letter-spacing:1px; color:#20180a; background:var(--chalk-dim); border-radius:4px; padding:2px 6px; white-space:nowrap; }
@@ -247,7 +255,7 @@
   .stats-bar-value{ width:38px; text-align:right; flex-shrink:0; font-weight:600; }
   .order-modal{ max-width:480px; }
   .order-items-list{ max-height:50vh; overflow-y:auto; margin:10px 0; }
-  .order-cat-name{ font-family:'Caveat', cursive; color:var(--gold); font-size:1.2rem; margin:10px 0 4px; }
+  .order-cat-name{ font-family:'Barqish', 'Caveat', cursive; color:var(--gold); font-size:1.2rem; margin:10px 0 4px; }
   .order-item-row{ display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); gap:10px; }
   .order-item-name{ font-size:0.9rem; flex:1; }
   .order-qty-controls{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
@@ -396,7 +404,7 @@
     position:absolute; top:14px; right:16px; background:transparent; border:none; color:var(--chalk-dim);
     font-size:1.4rem; cursor:pointer; line-height:1; padding:4px;
   }
-  .resa-modal h3{ font-family:'Caveat', cursive; font-size:1.8rem; color:var(--gold); margin:0 0 14px; }
+  .resa-modal h3{ font-family:'Barqish', 'Caveat', cursive; font-size:1.8rem; color:var(--gold); margin:0 0 14px; }
 
 
   /* Kitchen stock counter — tablet-friendly, plain black & white */
